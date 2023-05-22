@@ -7,6 +7,8 @@
 #include "m_pd.h"
 #include <stdlib.h>
 #include <stdbool.h>
+#include <math.h>
+#include <string.h>
 
 #include "lua/lauxlib.h"
 #include "lua/lua.h"
@@ -14,7 +16,6 @@
 
 #define MAXGRAINS 1000
 #define MIDC_OFFSET (261.62556530059868 / 256.0)
-#define M_LN2	0.69314718055994529
 #define DEFAULT_TABLE_SIZE 1024
 
 static t_class *s_luagran_class;
@@ -25,6 +26,7 @@ typedef struct Grain {
 	float wavePhase; 
 	float ampPhase; 
 	int dur; 
+	float amp;
 	float panR; 
 	float panL; 
 	int currTime; 
@@ -64,6 +66,9 @@ void luagran_stop(t_luagran *x);
 t_int *luagran_perform(t_int *w);
 void luagran_dsp(t_luagran *x, t_signal **sp);
 void luagran_anything(t_luagran *x, t_symbol *s, long argc, t_atom *argv);
+void luagran_doread(t_luagran *x, t_symbol *s);
+void luagran_usesine(t_luagran *x);
+void luagran_usehanning(t_luagran *x);
 
  
 
@@ -100,18 +105,49 @@ float oscili(float amp, float si, float *farray, int len, float *phs)
 					   frac) * amp);
 }
 
+int error_handler(lua_State *L) {
+  // Push a stack trace string onto the stack.
+  // This augmented string will effectively replace the simpler
+  // error message that comes directly from the Lua error.
+  luaL_traceback(L, L, lua_tostring(L, -1), 1);
+  return 1;
+}
 
-
-
-
-void luagran_setup(void *r)
+void set_lua_path(lua_State* L, const char* path)
 {
-	t_class* c = class_new("luagran~", (t_newmethod)luagran_new, (t_method)luagran_free, sizeof(t_luagran), CLASS_DEFAULT, A_DEFSYMBOL, 0);
+	lua_getglobal( L, "package" );
+    lua_getfield( L, -1, "path" ); // get field "path" from table at top of stack (-1)
+	char new_path[MAXPDSTRING];
 
-	class_addmethod(c, (t_method)luagran_dsp64,		gensym("dsp64"),	A_CANT, 0);
+    strcpy(new_path, lua_tostring( L, -1 )); // grab path string from top of stack
+	strcat(new_path, ";");
+	strcat(new_path, path);
+	strcat(new_path, "/?.lua");
+
+    lua_pop( L, 1 ); // get rid of the string on the stack we just pushed on line 5
+    lua_pushstring( L, new_path); // push the new one
+    lua_setfield( L, -2, "path" ); // set the field "path" in table at -2 with value at top of stack
+    lua_pop( L, 1 ); // get rid of package table from top of stack
+}
+
+int lua_post(lua_State *L){
+	const char* str = lua_tostring(L, 1);
+	post(str);
+	return 0;
+}
+
+
+
+
+
+void luagran_setup(void)
+{
+	t_class* c = class_new(gensym("luagran~"), (t_newmethod)luagran_new, (t_method)luagran_free, sizeof(t_luagran), CLASS_DEFAULT, A_DEFSYMBOL, 0);
+
+	class_addmethod(c, (t_method)luagran_dsp,		gensym("dsp"),	A_CANT, 0);
 	class_addmethod(c, (t_method)luagran_start,		gensym("start"), 0);
 	class_addmethod(c, (t_method)luagran_stop,		gensym("stop"), 0);
-	class_addanything(t_class *c, (t_method)luagran_anything);
+	class_addanything(c, (t_method)luagran_anything);
 	s_luagran_class = c;
 }
 
@@ -126,8 +162,8 @@ void *luagran_new(t_symbol *s)
 	
 	
 	//outlets
-	x_out_l = outlet_new(&x->x_obj, &s_signal);		// audio outlet l
-	x_out_r = outlet_new(&x->x_obj, &s_signal);		// audio outlet r
+	x->x_out_l = outlet_new(&x->w_obj, &s_signal);		// audio outlet l
+	x->x_out_r = outlet_new(&x->w_obj, &s_signal);		// audio outlet r
 	
 	
 	// Setup Grains
@@ -143,20 +179,65 @@ void *luagran_new(t_symbol *s)
         	.isplaying=false };
     }
 	
-	newGrainCounter = 0;
-	running = false;
+	x->newGrainCounter = 0;
+	x->running = false;
 
 
 	//Setup Lua
-	
+	luagran_doread(x, s);
 	
 	//Use default wavetables
 	luagran_usesine(x);
 	luagran_usehanning(x);
 
 
-	return (x);
+	return ((void *)x);
 }
+
+void luagran_doread(t_luagran *x, t_symbol *s){
+
+	
+	char searchfile[MAXPDSTRING];
+
+	strcpy(searchfile, s->s_name);
+	char outpath[MAXPDSTRING];
+	char outname[MAXPDSTRING];
+
+
+	
+
+
+	const char *dirname = canvas_getdir(canvas_getcurrent())->s_name;
+
+	int fd = open_via_path(dirname, searchfile, "", outpath, &outname, MAXPDSTRING, 1);
+	if (fd < 0){
+		pd_error(x, "%s: error finding file", searchfile);
+        return;
+	}
+	set_lua_path(x->L, outpath);
+
+	if(luaL_dofile(x->L, outname) != 0){ // +1, 1
+		pd_error(x, "%s: error opening file", outname);
+        return;
+	}
+	lua_setglobal(x->L, "granmodule");  // -1, 0
+    lua_settop(x->L, 0);
+	
+	lua_pushcfunction(x->L, lua_post);
+	lua_setglobal(x->L, "post");
+
+	lua_pushcfunction(x->L, error_handler);
+	lua_getglobal(x->L, "granmodule");
+	lua_getfield(x->L, -1, "init");
+	
+    int status = lua_pcall(x->L, 0, 0, -3);
+	if (status != LUA_OK){
+		pd_error(x, lua_tostring(x->L, -1));
+	}
+	lua_settop(x->L, 0);
+}
+
+
 
 void luagran_usesine(t_luagran* x){
 	
@@ -190,27 +271,21 @@ void luagran_anything(t_luagran *x, t_symbol *s, long argc, t_atom *argv)
 {
     long i;
     t_atom *ap;
-	
+	post("Update with symbol %s", s);
+
+	lua_pushcfunction(x->L, error_handler);
 	lua_getglobal(x->L, "granmodule");
 	lua_getfield(x->L, -1, "update");
 	
     for (i = 0, ap = argv; i < argc; i++, ap++) {
-        switch (atom_gettype(ap)) {
-            case A_LONG:
-                lua_pushnumber(x->L, (double)atom_getlong(ap));
-                break;
-            case A_FLOAT:
-                lua_pushnumber(x->L, (double)atom_getfloat(ap));
-                break;
-            case A_SYM:
-				lua_pushstring(x->L, atom_getsym(ap)->s_name);
-                break;
-            default:
-                post("%ld: unknown atom type (%ld)", i+1, atom_gettype(ap));
-                break;
-        }
+        lua_pushnumber(x->L, (double)atom_getfloat(ap));
     }
-	lua_call(x->L, argc, 0);
+
+	int status = lua_pcall(x->L, argc, 0, -3 - argc);
+	if (status != LUA_OK){
+		pd_error(x, lua_tostring(x->L, -1));
+	}
+	lua_settop(x->L, 0);
 }
 
 
@@ -220,14 +295,7 @@ void luagran_anything(t_luagran *x, t_symbol *s, long argc, t_atom *argv)
 // START AND STOP MSGS
 ////
 void luagran_start(t_luagran *x){
-	if (!buffer_ref_exists(x->w_buf) || !buffer_ref_exists(x->w_env))
-	{
-		error("Make sure you've configured a wavetable buffer and envelope buffer!");
-		defer((t_object*)x, (method)luagran_setbuffers, NULL, 0, NULL);
-	}
-		
-	else
-		x->running = true;
+	x->running = true;
 }
 
 void luagran_stop(t_luagran *x){
@@ -236,16 +304,20 @@ void luagran_stop(t_luagran *x){
 
 
 void luagran_new_grain(t_luagran *x, Grain *grain){
+	lua_pushcfunction(x->L, error_handler);
 	lua_getglobal(x->L, "granmodule");
 	lua_getfield(x->L, -1, "generate");
-    lua_call(x->L, 0, 5);
+    int status = lua_pcall(x->L, 0, 0, -3);
+	if (status != LUA_OK){
+		pd_error(x, lua_tostring(x->L, -1));
+	}
 	
-	double rate = lua_tonumber(L, -5);
-    double dur = lua_tonumber(L, -4);
-	double freq = lua_tonumber(L, -3);
-	double amp = lua_tonumber(L, -2);
-	double pan = lua_tonumber(L, -1);
-	lua_pop(L, 5);
+	double rate = lua_tonumber(x->L, -5);
+    double dur = lua_tonumber(x->L, -4);
+	double freq = lua_tonumber(x->L, -3);
+	double amp = lua_tonumber(x->L, -2);
+	double pan = lua_tonumber(x->L, -1);
+	lua_pop(x->L, 5);
 	
 	float sr = sys_getsr();
 	
@@ -260,26 +332,23 @@ void luagran_new_grain(t_luagran *x, Grain *grain){
 	grain->panR = pan;
 	grain->panL = 1 - pan; // separating these in RAM means fewer sample rate calculations
 	grain->dur = (int)round(grainDurSamps);
+	grain->amp = amp;
 	
 	x->newGrainCounter = (float) rate * sr / 1000;
 	
-}
-
-void luagran_reset_grain_rate(t_luagran *x){
-	x->newGrainCounter = (int)round((double)sys_getsr() * prob(x->grainRateVarLow, x->grainRateVarMid, x->grainRateVarHigh, x->grainRateVarTight));
 }
 
 
 // rewrite
 t_int *luagran_perform(t_int *w)
 {
-	t_xfade_tilde *x = (t_xfade_tilde *)(w[1]);
+	t_luagran *x = (t_luagran *)(w[1]);
 	t_sample    *l_out =      (t_sample *)(w[2]);
 	t_sample    *r_out =      (t_sample *)(w[3]);
 	int            n =             (int)(w[4]);
 	
-	b = x->sineTable;
-	e = x->hanningTable;
+	float* b = x->sineTable;
+	float* e = x->hanningTable;
 	if (!b || !e || !x->running)
 	{
 		//post("DSP failure");
@@ -299,7 +368,7 @@ t_int *luagran_perform(t_int *w)
 				else
 				{
 					// should include an interpolation option at some point
-					float grainAmp = oscili(1, currGrain->ampSampInc, e, x->w_envlen, &((*currGrain).ampPhase));
+					float grainAmp = currGrain->amp * oscili(1, currGrain->ampSampInc, e, x->w_envlen, &((*currGrain).ampPhase));
 					float grainOut = oscili(grainAmp ,currGrain->waveSampInc, b, x->w_len, &((*currGrain).wavePhase));
 					*l_out += (grainOut * (double)currGrain->panL);
 					*r_out += (grainOut * (double)currGrain->panR);
@@ -309,12 +378,7 @@ t_int *luagran_perform(t_int *w)
 
 			if ((x->newGrainCounter <= 0) && !currGrain->isplaying)
 			{
-				luagran_reset_grain_rate(x);
-				if (x->newGrainCounter > 0) // we don't allow two grains to be create on the same frame
-					{luagran_new_grain(x, currGrain);}
-				else
-					{x->newGrainCounter = 1;}
-
+				luagran_new_grain(x, currGrain);
 			}
 		}
 		l_out++;
@@ -335,6 +399,7 @@ zero:
 		*l_out++ = 0.;
 		*r_out++ = 0.;
 	}
+	return w+5;
 }
 
 // adjust for the appropriate number of inlets and outlets (2 out, no in)
