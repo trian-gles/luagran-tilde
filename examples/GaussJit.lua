@@ -1,11 +1,11 @@
-inlets = 5
-outlets = 5
+this.inlets = 5
+this.outlets = 2
 
-mux = 0
-muy = 0
-varx = 1
-vary = 1
-cov = 0
+local mux = 0
+local muy = 0
+local varx = 1
+local vary = 1
+local cov = 0
 
 RESOLUTION = 21
 
@@ -15,24 +15,22 @@ function loadbang()
 	
 end
 
-function msg_float(f)
-	if inlet == 0 then
+function float(f)
+	if this.last_inlet == 0 then
 		mux = f
-	elseif inlet == 1 then
+	elseif this.last_inlet == 1 then
 		muy = f
-	elseif inlet == 2 then
+	elseif this.last_inlet == 2 then
 		varx = f
-	elseif inlet == 3 then
+	elseif this.last_inlet == 3 then
 		vary = f
-	elseif inlet == 4 then
+	elseif this.last_inlet == 4 then
 		cov = f
 	end
-	
 	make_positive_definite()
 	
-	outlet(2, varx)
-	outlet(3, vary)
-	outlet(4, cov)
+	outlet(1, cov)
+	print(cov)
 	bang()
 end
 
