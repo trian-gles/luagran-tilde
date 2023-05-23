@@ -8,10 +8,7 @@
 #include "z_dsp.h"
 #include "math.h"
 #include "ext_buffer.h"
-#include "ext_atomic.h"
-#include "ext_obex.h"
 #include <stdlib.h>
-#include <stdbool.h>
 
 #include "lua/lauxlib.h"
 #include "lua/lua.h"
@@ -19,7 +16,6 @@
 
 #define MAXGRAINS 1000
 #define MIDC_OFFSET (261.62556530059868 / 256.0)
-#define M_LN2	0.69314718055994529
 #define DEFAULT_TABLE_SIZE 1024
 
 
@@ -32,6 +28,8 @@ typedef struct Grain {
 	int dur; 
 	float panR; 
 	float panL; 
+	float amp;
+	bool useAmp;
 	int currTime; 
 	bool isplaying;
 	} Grain;
@@ -79,7 +77,7 @@ void luagran_usehanning(t_luagran* x);
 void luagran_doread(t_luagran *x, t_symbol *s);
 
 int lua_post(lua_State *L){
-	char* str = lua_tostring(L, 1);
+	const char* str = lua_tostring(L, 1);
 	post(str);
 	return 0;
 }
@@ -180,9 +178,9 @@ void ext_main(void *r)
 */
 
 /* Args:
-		p0: wavetable
+		p0: script name
 		p1: grainEnv
-		p2: script name
+		p2: wavetable
 	*/
 	
 // will eventually need to handle for buffers with more than one channel
@@ -295,7 +293,7 @@ void luagran_doread(t_luagran *x, t_symbol *s){
 
 	if (locatefile_extended(searchfile, &pathcode, &outtype, NULL, 0) != 0)
 	{
-		object_error(x, "%s: cannot find file", searchfile);
+		object_error((t_object*)x, "%s: cannot find file", searchfile);
 	}
 
 	get_path(pathcode, searchfile, filepath);
@@ -306,7 +304,7 @@ void luagran_doread(t_luagran *x, t_symbol *s){
 
 
 	if(luaL_dofile(x->L, filepath) != 0){ // +1, 1
-		object_error(x, "%s: error opening file", filepath);
+		object_error((t_object *)x, "%s: error opening file", filepath);
         return;
 	}
 	lua_setglobal(x->L, "granmodule");  // -1, 0
@@ -500,8 +498,8 @@ void luagran_new_grain(t_luagran *x, Grain *grain){
 	grain->panR = pan;
 	grain->panL = 1 - pan; // separating these in RAM means fewer sample rate calculations
 	grain->dur = (int)round(grainDurSamps);
-	
-	
+	grain->amp = amp;
+	grain->useAmp = amp != 1;
 	
 }
 
@@ -550,6 +548,8 @@ void luagran_perform64(t_luagran *x, t_object *dsp64, double **ins, long numins,
 				{
 					// should include an interpolation option at some point
 					float grainAmp = oscili(1, currGrain->ampSampInc, e, x->w_envlen, &((*currGrain).ampPhase));
+					if (currGrain->useAmp)
+						grainAmp *= currGrain->amp;
 					float grainOut = oscili(grainAmp ,currGrain->waveSampInc, b, x->w_len, &((*currGrain).wavePhase));
 					*l_out += (grainOut * (double)currGrain->panL);
 					*r_out += (grainOut * (double)currGrain->panR);

@@ -11,9 +11,11 @@ include_directories(
 	"${MAX_SDK_JIT_INCLUDES}"
 	"${LUADIR}"
 )
-
-link_libraries(${LUADIR}/liblua.a)
-
+if(UNIX)
+	link_libraries(${LUADIR}/liblua.a)
+else()
+	link_libraries(${LUADIR}/lua54.lib)
+endif()
 
 file(GLOB PROJECT_SRC
      "*.h"
