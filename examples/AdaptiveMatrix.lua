@@ -1,4 +1,9 @@
+local N= 3
+nondiags = (N*N - N) / 2
 require 'math'
+
+this.inlets = N + nondiags
+this.outlets = N + nondiags
 
 Quadratic = {a=0,b=0,c=0}
 
@@ -6,9 +11,9 @@ function Quadratic:new(a, b, c)
 	o = {}
 	setmetatable(o, self)
 	self.__index = self
-	self.a = a or 0
-	self.b = b or 0
-	self.c = c or 0
+	o.a = a or 0
+	o.b = b or 0
+	o.c = c or 0
 	return o
 end
 
@@ -16,16 +21,20 @@ function Quadratic:roots()
 	sqrroot = (self.b^2 - 4*self.a*self.c)
 	
 	if sqrroot < 0 then
-		return nil
+		return 0/0, -0/0
 	elseif self.a == 0 then
 		return self.c / self.b^2
 	else
-		return {(-self.b + sqrroot^0.5)/(2*self.a),(-self.b - sqrroot^0.5)/(2*self.a)}
+		return (-self.b + sqrroot^0.5)/(2*self.a),(-self.b - sqrroot^0.5)/(2*self.a)
 	end
 end
 
 function Quadratic.__add(x1, x2)
-	return Quadratic:new(x1.a+x2.a, x1.b+x2.b, x1.c+x2.c)
+    if getmetatable(x2) == Quadratic then
+	    return Quadratic:new(x1.a+x2.a, x1.b+x2.b, x1.c+x2.c)
+	else
+	   return  Quadratic:new(x1.a, x1.b, x1.c+x2)
+	end
 end
 
 function Quadratic.__sub(x1, x2)
@@ -35,13 +44,24 @@ end
 function Quadratic.__mul(x1, x2)
 
     --(bx + c) * (b'x + c') = bb'x^2 + bc'x + b'cx + cc'
-    a = x1.b * x2.b + x1.a * x2.c + x1.c * x2.a
-
-    b = x1.b * x2.c + x2.b * x1.c
-
-    c = x1.c * x2.c
-
+    
+    if getmetatable(x2) == Quadratic then
+        a = x1.b * x2.b + x1.a * x2.c + x1.c * x2.a
+    
+        b = x1.b * x2.c + x2.b * x1.c
+    
+        c = x1.c * x2.c
+    else
+       a = x1.a * x2
+       b = x1.b * x2
+       c = x1.c * x2
+    end
+    
     return Quadratic:new(a, b, c)
+end
+
+function Quadratic:get_string()
+    return string.format("%fx^2 + %fx + %f", self.a, self.b, self.c)
 end
 
 
@@ -109,6 +129,10 @@ function determinant(m, sub_length, start_row, valid_cols, valid_rows)
       table.insert(valid_rows, i)
     end
   end
+  
+  if not start_row then
+	start_row = 1
+  end
 
   local N = #valid_cols
   
@@ -140,7 +164,7 @@ end
 
 function check_positive_definite(m)
   for N = 2, #m do
-    if not determinant(m, N) >= 0 then
+    if not (determinant(m, N) >= 0) then
       return false
     end
   end
@@ -166,12 +190,15 @@ function adjust_posdef_diagonals(m, i, j)
 end
 
 
-function get_all_combs(choices)
-  local c = {}
+function get_all_combs_plus_ij(choices, i, j)
+  local c = {{i, j}}
   local n = #choices
   
-  for i = 1, n do
-    for _, comb in ipairs(get_combinations(choices, i)) do
+  for index = 1, n do
+    for _, comb in ipairs(get_combinations(choices, index)) do
+        table.insert(comb, i)
+        table.insert(comb, j)
+        
       table.insert(c, comb)
     end
   end
@@ -207,76 +234,132 @@ function map(arr, fn)
   return new_arr
 end
 
+function make_combs(i, j, N)
+  local combs = {}
+  
+  for o = 1, N do
+    if o ~= i and o ~= j then
+      table.insert(combs, o)
+    end
+  end
+  
+  return get_all_combs_plus_ij(combs, i, j)
+end
+
 function adjust_positive_definite(m, i, j)
-  m_quad = make_quadratic(m)
+  
   current_value = m[i][j]
   if current_value ~= 0 then
     current_sign = current_value / math.abs(current_value)
   else
     current_sign = 1
   end
-
+    m_quad = make_quadratic(m)
   -- set this index as an unknown
   m_quad[i][j].b = 1
   m_quad[j][i].b = 1
   m_quad[i][j].c = 0
   m_quad[j][i].c = 0
-  starting_length = math.max(math.min(i, j), 2) -- the smallest sub matrix we have to test.  There's a better way to do this, but I'll try this first
+  
   N = #m
 
   -- set up all combinations of numbers including this one
-  combs = {{}}
-  for o = 1, N do
-    if o ~= i and o ~= j then
-      table.insert(combs[1], o)
-    end
-  end
-  for k = 1, N - 1 do
-    for _, v in ipairs(combinations(combs[k])) do
-      local new_comb = {}
-      for _, o in ipairs(v) do
-        table.insert(new_comb, o)
-      end
-      table.insert(new_comb, i)
-      table.insert(new_comb, j)
-      table.insert(combs, new_comb)
-    end
-  end
+  combs=make_combs(i, j, N)
 
   for _, combination in ipairs(combs) do
     if check_positive_definite(m) then -- the last step solved it
       return true
     end
 
+	continue = false
+
     if determinant_marginal(m, combination, combination) > 0 then -- this sub determinant is not the problem
-      goto continue
+      continue = true
     end
 
-    det = determinant_marginal(m_quad, combination, combination)
-    root_1, root_2 = det:roots()
-
-    if type(root_1) == "userdata" then
-      return false -- no real roots, no solution.  Try another index in the matrix!
-    end
+	if (not continue) then
+	    
+    	det = determinant_marginal(m_quad, combination, combination)
+    	root_1, root_2 = det:roots()
+    	if tostring(root_1) == tostring(0/0) or  tostring(root_1) == tostring(-0/0)then
+      		return false -- no real roots, no solution.  Try another index in the matrix!
+    	end
     
     -- print(string.format("Proposing roots %f and %f", root_1, root_2))
-    determinant_concavity = det.a / math.abs(det.a)
-    root_1 = root_1 - determinant_concavity * 0.001
-    root_2 = root_2 + determinant_concavity * 0.001 -- Ensure that these are positive
+    	determinant_concavity = det.a / math.abs(det.a)
+    	root_1 = root_1 - determinant_concavity * 0.001
+    	root_2 = root_2 + determinant_concavity * 0.001 -- Ensure that these are positive
 
-    if math.abs(current_value - root_1) < math.abs(current_value) - root_2 then -- chose the closer root
-      current_value = root_1
-    else
-      current_value = root_2
-    end
+    	if math.abs(current_value - root_1) < math.abs(current_value) - root_2 then -- chose the closer root
+      	current_value = root_1
+    	else
+      	current_value = root_2
+    	end
 
-    m[i][j] = current_value
-    m[j][i] = current_value
-
-    ::continue::
+    	m[i][j] = current_value
+    	m[j][i] = current_value
+	end
+    
   end
 
   return check_positive_definite(m)
+end
+
+function make_quadratic(m)
+  local new_m = {}
+  for i = 1, #m do
+    local row = {}
+    for j = 1, #m do
+        local val = m[i][j]
+        row[j] = Quadratic:new(0, 0, val)
+    end
+    
+    for j = 1, #m[i] do
+    end
+    table.insert(new_m, row)
+  end
+  return new_m
+end
+
+function print_mat(m)
+   for j = 1, #m do
+        print(table.concat(m[j], ",  "))
+    end
+end
+
+AdaptiveNMatrix = {}
+	
+function AdaptiveNMatrix:new(n)
+	o = {}
+	setmetatable(o, self)
+	self.__index = self
+	o.m = {}
+	
+	-- fill with identity matrix
+	
+	for i=1,n do
+		o.m[i] = {}
+		for j=1,n do
+			if i==j then
+				o.m[i][j] = 1
+			else
+				o.m[i][j] = 0
+			end
+		end
+	end
+	
+	-- setup last touched
+	o.last_touched = {}
+    
+    for j = 1, n do
+      for i = j, n do
+        if i ~= j then
+          table.insert(o.last_touched, {i, j})
+        end
+      end
+    end
+	
+	return o
 end
 
 function AdaptiveNMatrix:modify(value, i, j)
@@ -289,9 +372,15 @@ function AdaptiveNMatrix:modify(value, i, j)
     if i < j then
       i, j = j, i
     end
-    index = {i, j}
-    table.remove(self.last_touched, index) -- remove old index
-    table.insert(self.last_touched, index) -- add new index
+    
+    -- remove old index
+    for ind, touch_index in ipairs(self.last_touched) do
+       if (touch_index[1] == i and touch_index[2] == j) then
+           table.remove(self.last_touched, ind)
+        end
+    end
+     
+    table.insert(self.last_touched, {i, j}) -- add new index
 
     self.m[i][j] = value
     self.m[j][i] = value
@@ -316,4 +405,49 @@ function AdaptiveNMatrix:modify(value, i, j)
       end
     end
   end
+end
+
+am = AdaptiveNMatrix:new(N)
+
+function off_diag_scalar_index(s, n)
+	local row = 0
+	local max_in_row = 0
+	local row_count = n
+	
+	while max_in_row < s do
+	   row = row + 1
+	   row_count = row_count - 1
+	   max_in_row = max_in_row + row_count
+	end
+	local col = n - (max_in_row - s)
+	return row, col
+end
+
+
+function float(f)
+	i, j = get_inlet_index(this.last_inlet)
+	am:modify(f, i, j)
+	output_vals()
+end
+
+function get_inlet_index(inlet_num)
+	if (inlet_num < N) then
+		return inlet_num + 1, inlet_num + 1
+	else
+		return off_diag_scalar_index(inlet_num + 1 - N, N)
+	end
+end
+
+function output_vals()
+	-- output diagonals
+	for i=1,N do
+		outlet(i-1, am.m[i][i])
+	end
+	
+	-- output off diagonals
+	for nd=1,nondiags do
+		i, j = off_diag_scalar_index(nd, N)
+		outlet_i = N - 1 + nd
+		outlet(outlet_i, am.m[i][j])
+	end
 end

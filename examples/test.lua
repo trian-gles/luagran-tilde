@@ -1,0 +1,3 @@
+require 'AdaptiveMatrix'
+
+print("hi")

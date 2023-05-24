@@ -36,7 +36,6 @@ function msg_float(f){
 	}
 	
 	
-	make_positive_definite();
 	
 	outlet(2, varx);
 	outlet(3, vary);
@@ -44,22 +43,7 @@ function msg_float(f){
 	bang();
 }
 
-function make_positive_definite()
-{
-	varx = Math.max(0.001, varx);
-	vary = Math.max(0.001, vary)
-	
-	if (cov * cov + 0.0001> varx * vary){
-		var sign = cov / Math.abs(cov);
-		cov = sign * (Math.sqrt(varx * vary) - .0001);
-	}
-}
-
 function bang(){
-	
-	
-	
-	
 	var determinant = varx * vary - cov * cov;
 	
 	var normalizer = Math.sqrt(determinant) * 2 * Math.PI;
