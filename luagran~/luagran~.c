@@ -27,8 +27,7 @@ typedef struct Grain {
 	float ampPhase; 
 	int dur; 
 	float panR; 
-	float panL; 
-	float amp;
+	float panL;
 	bool useAmp;
 	int currTime; 
 	bool isplaying;
@@ -495,10 +494,9 @@ void luagran_new_grain(t_luagran *x, Grain *grain){
 	grain->isplaying = true;
 	grain->wavePhase = 0;
 	grain->ampPhase = 0;
-	grain->panR = pan;
-	grain->panL = 1 - pan; // separating these in RAM means fewer sample rate calculations
+	grain->panR = pan * amp;
+	grain->panL = (1 - pan) * amp; // separating these in RAM means fewer sample rate calculations
 	grain->dur = (int)round(grainDurSamps);
-	grain->amp = amp;
 	grain->useAmp = amp != 1;
 	
 }
@@ -548,8 +546,6 @@ void luagran_perform64(t_luagran *x, t_object *dsp64, double **ins, long numins,
 				{
 					// should include an interpolation option at some point
 					float grainAmp = oscili(1, currGrain->ampSampInc, e, x->w_envlen, &((*currGrain).ampPhase));
-					if (currGrain->useAmp)
-						grainAmp *= currGrain->amp;
 					float grainOut = oscili(grainAmp ,currGrain->waveSampInc, b, x->w_len, &((*currGrain).wavePhase));
 					*l_out += (grainOut * (double)currGrain->panL);
 					*r_out += (grainOut * (double)currGrain->panR);
