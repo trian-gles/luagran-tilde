@@ -619,22 +619,18 @@ end
 --// matrix.cholesky ( m1 )
 -- calculate lower triangular matrix L such that LL^t = A
 function matrix.cholesky(m1)
-    local mtx = matrix.copy(m1)
+    local mtx = matrix:new(#m1, #m1, 0)
 
     for i =1,#mtx do
-        for j =1,#mtx do
+        for j =1,i do
+            local sum = 0 
+            for k = 1, j - 1 do
+                sum = sum + mtx[i][k] * mtx[j][k]
+            end
             if (i == j) then
-                local sum = 0
-                for p=1,i-1 do
-                    sum = sum + m1[i][p]^2
-                end
                 mtx[i][j] = math.sqrt(m1[i][j] - sum)
             else
-                local sum = 0
-                for p=1,i-1 do
-                    sum = sum + m1[i][p] * m1[j][p]
-                end
-                mtx[i][j] = (m1[i][j] - sum) / mtx[i][i]
+                mtx[i][j] = (m1[i][j] - sum) / mtx[j][j]
             end
         end
     end

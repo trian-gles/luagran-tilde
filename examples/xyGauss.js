@@ -22,7 +22,7 @@ function msg_float(f){
 		mux = f;
 		break;
 	case 1:
-		muy = f;
+		muy = -f;
 		break;
 	case 2:
 		varx = f;
@@ -31,7 +31,7 @@ function msg_float(f){
 		vary = f;
 		break;
 	case 4:
-		cov = f;
+		cov = -f;
 		break;
 	}
 	

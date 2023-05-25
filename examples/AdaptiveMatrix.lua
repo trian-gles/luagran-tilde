@@ -407,7 +407,7 @@ function AdaptiveNMatrix:modify(value, i, j)
   end
 end
 
-am = AdaptiveNMatrix:new(N)
+am = nil
 
 function off_diag_scalar_index(s, n)
 	local row = 0
@@ -450,4 +450,10 @@ function output_vals()
 		outlet_i = N - 1 + nd
 		outlet(outlet_i, am.m[i][j])
 	end
+end
+
+function loadbang()
+	am = AdaptiveNMatrix:new(N)
+	print("Calling lua loadbang")
+	output_vals()
 end

@@ -11,27 +11,13 @@ end
 
 function granmodule.init()
 	granmodule.state.mu = matrix:new({0, 0, 0})
-	granmodule.state.cov = matrix:new(
-		{
-			{1, 0, 0}, 
-			{0, 1, 0}, 
-			{0, 0, 1}
-		}
-	)
+	granmodule.state.cov = matrix:new(3, "I")
 
-	granmodule.state.L = matrix:new(
-		{
-			{0, 0, 1}, 
-			{0, 1, 0}, 
-			{1, 0, 0}
-		}
-	)
+	granmodule.state.L = matrix.transpose(matrix:new(3, "I"))
+
+	granmodule.state.e = matrix:new(3, "I") * 0.0001
 
 	granmodule.state.u = matrix:new({0, 0, 0})
-end
-
-local function scale(a, b, val)
-	return a * val + b
 end
 
 local function restrict(min, max, val)
@@ -41,17 +27,39 @@ end
 function granmodule.generate()
 
 	local x = granmodule.multivariate_sample(granmodule.state.mu, granmodule.state.L, granmodule.state.u)
+	for i=1,3 do
+		if x[i][1] == nil then
+			x[i][1] = 0
+			post("Value nil!")
+		end
+	end
+	
 	local amp = 1
-	local pan = math.random()
+	local pan = x[1][1] + 0.5
+	pan = restrict(0, 1, pan)
 
-	local rate = scale(3, 10.1, x[1][1])
+	local rate = math.random() * 20
 	rate = restrict(0.1, 200, rate)
 
-	local dur = scale(3, 15, x[2][1])
-	dur = restrict(0.01, 40, dur)
+	local dur = 4 * 4^x[2][1] -- exponentially scaled
+	dur = restrict(0.001, 100, dur)
 
-	local freq = 2 ^ scale(4, 10, x[3][1])
+	local freq = 2 ^ (4 * x[3][1] + 10) -- exponentially scaled, as frequency is anyways
 	freq = restrict(20, 20000, freq)
+	if freq == nil then
+		post("FREQ NIL")
+		freq = 440
+	end
+
+	if pan == nil then
+		post("PAN NIL")
+		pan = 0.5
+	end
+
+	if dur == nil then
+		post("dur NIL")
+		dur = 2
+	end
 
     return rate, dur, freq, amp, pan
 end
@@ -65,7 +73,6 @@ function granmodule.multivariate_sample(m, L, u)
 		if (i*2 <= n) then
 			u[i * 2][1] = z2 -- could be more efficient but whatevs
 		end
-		
 	end
 	return m + matrix.mul(L, u)
 end
@@ -83,7 +90,6 @@ function granmodule.update(...)
 	granmodule.state.mu[1][1] = mux
 	granmodule.state.mu[2][1] = muy
 	granmodule.state.mu[3][1] = muz
-	post(matrix.tostring(granmodule.state.mu))
 	granmodule.state.cov = matrix:new(
 		{
 			{sigx, sigxy, sigxz}, 
@@ -91,8 +97,7 @@ function granmodule.update(...)
 			{sigxz, sigyz, sigz}
 		}
 	)
-	post(matrix.tostring(granmodule.state.cov))
-	granmodule.state.L = matrix.transpose(matrix.cholesky(granmodule.state.cov))
+	granmodule.state.L = matrix.cholesky(granmodule.state.cov + granmodule.state.e)
 end
 
 return granmodule
