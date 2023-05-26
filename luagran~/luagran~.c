@@ -21,14 +21,21 @@
 
 
 typedef struct Grain {
-	float waveSampInc; 
+	float waveSampInc; // unused for FM
 	float ampSampInc; 
 	float wavePhase; 
 	float ampPhase; 
-	int dur; 
+	int dur;
+	
+	//FM
+	float si_fc; // (len / sr) * carrier freq
+	float si_md; // (len / sr) * mod depth
+	float p_c; // carrier phase
+	float p_m // mod phase
+	
+		
 	float panR; 
 	float panL;
-	bool useAmp;
 	int currTime; 
 	bool isplaying;
 	} Grain;
@@ -54,6 +61,11 @@ typedef struct _luagran {
 	long w_envlen;
 	
 	int newGrainCounter;
+	
+	// useful grain generation constants
+	float sr_ms;
+	float w_len_sr; // wavetablelen / sr
+	float w_envlen_sr; // envtablelen / sr
 	
 	short w_connected[2];
 } t_luagran;
@@ -190,6 +202,8 @@ void *luagran_new(t_symbol *s,  long argc, t_atom *argv)
 	t_symbol *env=0;
 
 	dsp_setup((t_pxobject *)x,0);
+	
+	
 	if (argc > 0){
 		buf = atom_getsymarg(0,argc,argv);
 		x->w_name = buf;
@@ -237,6 +251,12 @@ void *luagran_new(t_symbol *s,  long argc, t_atom *argv)
         	.currTime=0, 
         	.isplaying=false };
     }
+
+	// constants useful for later
+	long sr = sys_getsr()
+	x->sr_ms = sr / 1000;
+	x->w_len_sr = w_len / sr;
+	x->w_envlen_sr = w_len / sr;
 
 
 	//Setup Lua
@@ -497,9 +517,10 @@ void luagran_new_grain(t_luagran *x, Grain *grain){
 	grain->panR = pan * amp;
 	grain->panL = (1 - pan) * amp; // separating these in RAM means fewer sample rate calculations
 	grain->dur = (int)round(grainDurSamps);
-	grain->useAmp = amp != 1;
 	
 }
+
+
 
 
 
