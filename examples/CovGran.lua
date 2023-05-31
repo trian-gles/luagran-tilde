@@ -34,15 +34,21 @@ function granmodule.generate()
 		end
 	end
 	
-	local amp = 1
-	local pan = x[1][1] + 0.5
-	pan = restrict(0, 1, pan)
+	local pan = math.random()
+	local amp = 1 --x[1][1] + 0.5
+	amp = restrict(0, 1, amp)
 
 	local rate = math.random() * 20
 	rate = restrict(0.1, 200, rate)
 
-	local dur = 4 * 4^x[2][1] -- exponentially scaled
+	local dur = 10 -- 4 * 4^x[2][1] -- exponentially scaled
 	dur = restrict(0.001, 100, dur)
+
+	local modFreq = 2 ^ (3 * x[1][1] + 9)
+	modFreq = restrict(20, 20000, modFreq)
+
+	local modDepth = 2 ^ (3 * x[2][1] + 9)
+	modDepth = restrict(20, 20000, modDepth)
 
 	local freq = 2 ^ (4 * x[3][1] + 10) -- exponentially scaled, as frequency is anyways
 	freq = restrict(20, 20000, freq)
@@ -60,8 +66,9 @@ function granmodule.generate()
 		post("dur NIL")
 		dur = 2
 	end
+	
 
-    return rate, dur, freq, amp, pan
+    return rate, dur, freq, modFreq, modDepth, amp, pan
 end
 
 function granmodule.multivariate_sample(m, L, u)

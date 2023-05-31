@@ -10,7 +10,7 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 917.0, 184.0, 1602.0, 1051.0 ],
+		"rect" : [ 171.0, 147.0, 1602.0, 1051.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -73,7 +73,7 @@
 					"patching_rect" : [ 162.0, 480.0, 150.0, 20.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 145.0, 718.0, 150.0, 20.0 ],
-					"text" : "PAN"
+					"text" : "AMP"
 				}
 
 			}
@@ -109,7 +109,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 1291.0, 874.0, 210.0, 35.0 ],
-					"text" : "update 0. 0. -0.34 1. 1. 0.2 0.999 0.246 0.245"
+					"text" : "update 0. -0.212 1.434 1. 2.837 2.7 1.679975 -1.637934 -2.766568"
 				}
 
 			}
@@ -353,8 +353,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "signal", "signal" ],
-					"patching_rect" : [ 1166.0, 435.0, 126.0, 22.0 ],
-					"text" : "luagran~ CovGran.lua"
+					"patching_rect" : [ 1166.0, 435.0, 169.0, 22.0 ],
+					"text" : "luagran~ CovGran.lua @FM 1"
 				}
 
 			}

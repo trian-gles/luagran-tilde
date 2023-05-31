@@ -8,6 +8,7 @@
 #include "z_dsp.h"
 #include "math.h"
 #include "ext_buffer.h"
+#include "ext_systhread.h"
 #include <stdlib.h>
 
 #include "lua/lauxlib.h"
@@ -21,10 +22,16 @@
 
 
 typedef struct Grain {
-	float waveSampInc; 
+	float waveSampInc; //carrier freq in FM
 	float ampSampInc; 
-	float wavePhase; 
+	float wavePhase; //carrier phase in FM
 	float ampPhase; 
+
+	// FM
+	float modSampInc; // si for modulation freq
+	float modPhase;
+	float modSiDepth; // si for modulation depth
+
 	int dur; 
 	float panR; 
 	float panL;
@@ -39,6 +46,7 @@ typedef struct _luagran {
 	t_buffer_ref *w_env;
 	t_symbol *w_name;
 	t_symbol *w_envname;
+	t_symbol *script_name;
 	
 	lua_State *L;
 	
@@ -49,10 +57,17 @@ typedef struct _luagran {
 
 	float sineTable[DEFAULT_TABLE_SIZE];
 	float hanningTable[DEFAULT_TABLE_SIZE];
+
+	t_systhread_mutex	x_mutex;
 	
 	long w_len;
 	long w_envlen;
+
+	long FM; // 0 or 1 bool
 	
+	float w_len_sr; // wavetable length over sr
+	float env_len_sr;
+
 	int newGrainCounter;
 	
 	short w_connected[2];
@@ -74,6 +89,7 @@ void luagran_set(t_luagran* x, t_symbol* s, long argc, t_atom* argv);
 void luagran_usesine(t_luagran* x);
 void luagran_usehanning(t_luagran* x);
 void luagran_doread(t_luagran *x, t_symbol *s);
+void luagran_compile(t_luagran* x);
 
 int lua_post(lua_State *L){
 	const char* str = lua_tostring(L, 1);
@@ -109,7 +125,11 @@ float oscili(float amp, float si, float *farray, int len, float *phs)
 	float frac = *phs  - i;      
 	*phs += si;                 
 	while(*phs >= len)
-		*phs -= len;       
+		*phs -= len;
+
+	while(*phs < 0)
+		*phs += len;
+
 	return((*(farray+i) + (*(farray+k) - *(farray+i)) *
 					   frac) * amp);
 }
@@ -157,6 +177,7 @@ void ext_main(void *r)
 	class_addmethod(c, (method)luagran_dsp64,		"dsp64",	A_CANT, 0);
 	class_addmethod(c, (method)luagran_start,		"start", 0);
 	class_addmethod(c, (method)luagran_stop,		"stop", 0);
+	class_addmethod(c, (method)luagran_compile,		"compile", 0);
 	
 	class_addmethod(c, (method)luagran_notify,		"notify",	A_CANT, 0);
 	class_addmethod(c, (method)luagran_set, "set", A_GIMME, 0);
@@ -164,6 +185,9 @@ void ext_main(void *r)
 	class_addmethod(c, (method)luagran_assist,		"assist",	A_CANT, 0);
 	
 	class_addmethod(c, (method)luagran_update, "update", A_GIMME, 0);
+
+	CLASS_ATTR_LONG(c, "FM", 0, t_luagran, FM);
+	CLASS_ATTR_FILTER_CLIP(c, "FM", 0, 1);
 
 	class_dspinit(c);
 	class_register(CLASS_BOX, c);
@@ -232,19 +256,22 @@ void *luagran_new(t_symbol *s,  long argc, t_atom *argv)
         	.wavePhase=0, 
         	.ampPhase=0, 
         	.dur=0, 
+			.modPhase=0,
+			.modSampInc=0,
         	.panR=0, 
         	.panL=0, 
         	.currTime=0, 
         	.isplaying=false };
     }
 
+	x->script_name = atom_getsymarg(0,argc,argv);
+	systhread_mutex_new(&x->x_mutex,0);
 
 	//Setup Lua
-	x->L = luaL_newstate();
-	luaL_openlibs(x->L);
-	t_symbol *sym = atom_getsymarg(0,argc,argv);
-	
-	luagran_doread(x, sym);
+	luagran_compile(x);
+
+
+	attr_args_process(x, argc, argv);
 	
 	return (x);
 }
@@ -332,12 +359,15 @@ void luagran_free(t_luagran *x)
 	object_free(x->w_buf);
 	object_free(x->w_env);
 	lua_close(x->L);
+
+	if (x->x_mutex)
+		systhread_mutex_free(x->x_mutex);
 }
 
-void luagran_update(t_luagran *x, t_symbol *s, long argc, t_atom *argv)
-{
-    long i;
+void luagran_doupdate(t_luagran *x, t_symbol *s, long argc, t_atom *argv){
+	long i;
     t_atom *ap;
+	systhread_mutex_lock(x->x_mutex);
 	lua_pushcfunction(x->L, error_handler);
 	lua_getglobal(x->L, "granmodule");
 	lua_getfield(x->L, -1, "update");
@@ -363,6 +393,11 @@ void luagran_update(t_luagran *x, t_symbol *s, long argc, t_atom *argv)
 		error(lua_tostring(x->L, -1));
 	}
 	lua_settop(x->L, 0);
+	systhread_mutex_unlock(x->x_mutex);
+}
+void luagran_update(t_luagran *x, t_symbol *s, long argc, t_atom *argv)
+{
+    defer(x, (method) luagran_doupdate, s, argc, argv);
 }
 
 
@@ -461,34 +496,75 @@ void luagran_start(t_luagran *x){
 
 void luagran_stop(t_luagran *x){
 	x->running = false;
+
+	for (size_t i = 0; i < MAXGRAINS; i++){
+        x->grains[i].isplaying = false;
+    }
+
+	x->newGrainCounter = 0;
+}
+
+void luagran_compile(t_luagran *x){
+	if (x->L)
+		lua_close(x->L);
+	x->L = luaL_newstate();
+	luaL_openlibs(x->L);
+	
+	luagran_doread(x, x->script_name);
 }
 
 
 void luagran_new_grain(t_luagran *x, Grain *grain){
+	systhread_mutex_lock(x->x_mutex);
 	lua_pushcfunction(x->L, error_handler);
 	lua_getglobal(x->L, "granmodule");
 	lua_getfield(x->L, -1, "generate");
+
+	double rate, dur, freq, amp, pan, modFreq, modDepth;
+	int status;
+	if (!x->FM)
+		status = lua_pcall(x->L, 0, 5, -3);
+	else
+		status = lua_pcall(x->L, 0, 7, -3);
+
 	
-	int status = lua_pcall(x->L, 0, 5, -3);
 	if (status != LUA_OK){
 		error(lua_tostring(x->L, -1));
 		lua_settop(x->L, 0);
 		return;
 	}
-	double rate = lua_tonumber(x->L, -5);
-    double dur = lua_tonumber(x->L, -4);
-	double freq = lua_tonumber(x->L, -3);
-	double amp = lua_tonumber(x->L, -2);
-	double pan = lua_tonumber(x->L, -1);
+	if (!x->FM){
+		rate = lua_tonumber(x->L, -5);
+		dur = lua_tonumber(x->L, -4);
+		freq = lua_tonumber(x->L, -3);
+		amp = lua_tonumber(x->L, -2);
+		pan = lua_tonumber(x->L, -1);
+	}
+	else {
+		rate = lua_tonumber(x->L, -7);
+		dur = lua_tonumber(x->L, -6);
+		freq = lua_tonumber(x->L, -5);
+		modFreq = lua_tonumber(x->L, -4);
+		modDepth = lua_tonumber(x->L, -3);
+		amp = lua_tonumber(x->L, -2);
+		pan = lua_tonumber(x->L, -1);
+	}
+	
 	lua_settop(x->L, 0);
 	float sr = sys_getsr();
+	if (!x->env_len_sr){
+		x->env_len_sr = x->w_envlen / sr;
+		x->w_len_sr = x->w_len / sr;
+	}
+	systhread_mutex_unlock(x->x_mutex);
+
 	x->newGrainCounter = (int) fmax(1, floor(rate * sr / 1000));
 	
 	
 	
 	float grainDurSamps = (int) fmax(1, floor(dur * sr / 1000));
 	
-	grain->waveSampInc = x->w_len * freq / sr;
+	grain->waveSampInc = x->w_len_sr * freq;
 	grain->ampSampInc = ((float)x->w_envlen) / grainDurSamps;
 	grain->currTime = 0;
 	grain->isplaying = true;
@@ -498,6 +574,13 @@ void luagran_new_grain(t_luagran *x, Grain *grain){
 	grain->panL = (1 - pan) * amp; // separating these in RAM means fewer sample rate calculations
 	grain->dur = (int)round(grainDurSamps);
 	grain->useAmp = amp != 1;
+
+	if (x->FM)
+	{
+		grain->modPhase = 0;
+		grain->modSampInc = x->w_len_sr * modFreq;
+		grain->modSiDepth = x->w_len_sr * modDepth;
+	}
 	
 }
 
@@ -546,7 +629,19 @@ void luagran_perform64(t_luagran *x, t_object *dsp64, double **ins, long numins,
 				{
 					// should include an interpolation option at some point
 					float grainAmp = oscili(1, currGrain->ampSampInc, e, x->w_envlen, &((*currGrain).ampPhase));
-					float grainOut = oscili(grainAmp ,currGrain->waveSampInc, b, x->w_len, &((*currGrain).wavePhase));
+					float grainOut;
+
+					if (x->FM){
+						float trueSi = currGrain->waveSampInc + oscili(currGrain->modSiDepth, currGrain->modSampInc, b, x->w_len, &((*currGrain).modPhase));
+						grainOut = oscili(grainAmp,trueSi, b, x->w_len, &((*currGrain).wavePhase));
+						if (grainOut > 1) {
+							post("Exploding grain out");
+							grainOut = 0;
+						}
+					}
+					else{
+						grainOut = oscili(grainAmp ,currGrain->waveSampInc, b, x->w_len, &((*currGrain).wavePhase));
+					}
 					*l_out += (grainOut * (double)currGrain->panL);
 					*r_out += (grainOut * (double)currGrain->panR);
 				}
