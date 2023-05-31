@@ -1,6 +1,6 @@
 /**
 	@file
-	luagran~
+	luagran_tilde~
 
 */
 
@@ -10,15 +10,19 @@
 #include <math.h>
 #include <string.h>
 
-#include "lua/lauxlib.h"
-#include "lua/lua.h"
-#include "lua/lualib.h"
+#include "lauxlib.h"
+#include "lua.h"
+#include "lualib.h"
 
 #define MAXGRAINS 1000
 #define MIDC_OFFSET (261.62556530059868 / 256.0)
 #define DEFAULT_TABLE_SIZE 1024
 
-static t_class *s_luagran_class;
+#ifndef M_LN2
+#define M_LN2 0.69314718056
+#endif
+
+static t_class *luagran_tilde_class;
 
 typedef struct Grain {
 	float waveSampInc; 
@@ -33,7 +37,7 @@ typedef struct Grain {
 	bool isplaying;
 	} Grain;
 
-typedef struct _luagran {
+typedef struct _luagran_tilde {
 	t_object w_obj;
 	
 	float sineTable[DEFAULT_TABLE_SIZE];
@@ -54,21 +58,21 @@ typedef struct _luagran {
 	
 	t_outlet* x_out_l;
 	t_outlet* x_out_r;
-} t_luagran;
+} t_luagran_tilde;
 
 
 
 
-void *luagran_new(t_symbol *s);
-void luagran_free(t_luagran *x);
-void luagran_start(t_luagran *x);
-void luagran_stop(t_luagran *x);
-t_int *luagran_perform(t_int *w);
-void luagran_dsp(t_luagran *x, t_signal **sp);
-void luagran_anything(t_luagran *x, t_symbol *s, long argc, t_atom *argv);
-void luagran_doread(t_luagran *x, t_symbol *s);
-void luagran_usesine(t_luagran *x);
-void luagran_usehanning(t_luagran *x);
+void *luagran_tilde_new(t_symbol *s);
+void luagran_tilde_free(t_luagran_tilde *x);
+void luagran_tilde_start(t_luagran_tilde *x);
+void luagran_tilde_stop(t_luagran_tilde *x);
+t_int *luagran_tilde_perform(t_int *w);
+void luagran_tilde_dsp(t_luagran_tilde *x, t_signal **sp);
+void luagran_tilde_anything(t_luagran_tilde *x, t_symbol *s, long argc, t_atom *argv);
+void luagran_tilde_doread(t_luagran_tilde *x, t_symbol *s);
+void luagran_tilde_usesine(t_luagran_tilde *x);
+void luagran_tilde_usehanning(t_luagran_tilde *x);
 
  
 
@@ -140,15 +144,15 @@ int lua_post(lua_State *L){
 
 
 
-void luagran_setup(void)
+void luagran_tilde_setup(void)
 {
-	t_class* c = class_new(gensym("luagran~"), (t_newmethod)luagran_new, (t_method)luagran_free, sizeof(t_luagran), CLASS_DEFAULT, A_DEFSYMBOL, 0);
+	t_class* c = class_new(gensym("luagran~"), (t_newmethod)luagran_tilde_new, (t_method)luagran_tilde_free, sizeof(t_luagran_tilde), CLASS_DEFAULT, A_DEFSYMBOL, 0);
 
-	class_addmethod(c, (t_method)luagran_dsp,		gensym("dsp"),	A_CANT, 0);
-	class_addmethod(c, (t_method)luagran_start,		gensym("start"), 0);
-	class_addmethod(c, (t_method)luagran_stop,		gensym("stop"), 0);
-	class_addanything(c, (t_method)luagran_anything);
-	s_luagran_class = c;
+	class_addmethod(c, (t_method)luagran_tilde_dsp,		gensym("dsp"),	A_CANT, 0);
+	class_addmethod(c, (t_method)luagran_tilde_start,		gensym("start"), 0);
+	class_addmethod(c, (t_method)luagran_tilde_stop,		gensym("stop"), 0);
+	class_addanything(c, (t_method)luagran_tilde_anything);
+	luagran_tilde_class = c;
 }
 
 /* Args:
@@ -156,9 +160,9 @@ void luagran_setup(void)
 	*/
 	
 // will eventually need to handle for buffers with more than one channel
-void *luagran_new(t_symbol *s)
+void *luagran_tilde_new(t_symbol *s)
 {
-	t_luagran *x = (t_luagran *)pd_new(s_luagran_class);
+	t_luagran_tilde *x = (t_luagran_tilde *)pd_new(luagran_tilde_class);
 	
 	
 	//outlets
@@ -177,47 +181,48 @@ void *luagran_new(t_symbol *s)
         	.panL=0, 
         	.currTime=0, 
         	.isplaying=false };
-    }
+    } 
 	
 	x->newGrainCounter = 0;
 	x->running = false;
 
 
 	//Setup Lua
-	luagran_doread(x, s);
+	x->L = luaL_newstate();
+	luaL_openlibs(x->L);
+	luagran_tilde_doread(x, s);
 	
 	//Use default wavetables
-	luagran_usesine(x);
-	luagran_usehanning(x);
+	luagran_tilde_usesine(x);
+	luagran_tilde_usehanning(x);
 
 
 	return ((void *)x);
 }
 
-void luagran_doread(t_luagran *x, t_symbol *s){
-
-	
+void luagran_tilde_doread(t_luagran_tilde *x, t_symbol *s){
 	char searchfile[MAXPDSTRING];
 
 	strcpy(searchfile, s->s_name);
 	char outpath[MAXPDSTRING];
-	char outname[MAXPDSTRING];
+	//char* outname;
 
 
 	
 
 
 	const char *dirname = canvas_getdir(canvas_getcurrent())->s_name;
-
-	int fd = open_via_path(dirname, searchfile, "", outpath, &outname, MAXPDSTRING, 1);
-	if (fd < 0){
-		pd_error(x, "%s: error finding file", searchfile);
-        return;
-	}
-	set_lua_path(x->L, outpath);
-
-	if(luaL_dofile(x->L, outname) != 0){ // +1, 1
-		pd_error(x, "%s: error opening file", outname);
+	sprintf(outpath, "%s/%s", dirname, searchfile);
+	//int fd = open_via_path(dirname, searchfile, "", outpath, &outname, MAXPDSTRING, 1);
+	
+	//if (fd < 0){
+	//	pd_error(x, "%s: error finding file", searchfile);
+    //    return;
+	//}
+	set_lua_path(x->L, dirname);
+	post("Attempting to open file %s", outpath);
+	if(luaL_dofile(x->L, outpath) != 0){ // +1, 1
+		pd_error(x, "%s: error opening file", outpath);
         return;
 	}
 	lua_setglobal(x->L, "granmodule");  // -1, 0
@@ -239,7 +244,7 @@ void luagran_doread(t_luagran *x, t_symbol *s){
 
 
 
-void luagran_usesine(t_luagran* x){
+void luagran_tilde_usesine(t_luagran_tilde* x){
 	
 	x->extern_wave = false;
 	for (size_t i = 0; i < DEFAULT_TABLE_SIZE; i++){
@@ -248,7 +253,7 @@ void luagran_usesine(t_luagran* x){
 	x->w_len = DEFAULT_TABLE_SIZE;
 }
 
-void luagran_usehanning(t_luagran* x){
+void luagran_tilde_usehanning(t_luagran_tilde* x){
 	
 	x->extern_env = false;
 	for (size_t i = 0; i < DEFAULT_TABLE_SIZE; i++){
@@ -260,14 +265,14 @@ void luagran_usehanning(t_luagran* x){
 
 
 
-void luagran_free(t_luagran *x)
+void luagran_tilde_free(t_luagran_tilde *x)
 {
 	outlet_free(x->x_out_l);
 	outlet_free(x->x_out_r);
 	lua_close(x->L);
 }
 
-void luagran_anything(t_luagran *x, t_symbol *s, long argc, t_atom *argv)
+void luagran_tilde_anything(t_luagran_tilde *x, t_symbol *s, long argc, t_atom *argv)
 {
     long i;
     t_atom *ap;
@@ -294,16 +299,16 @@ void luagran_anything(t_luagran *x, t_symbol *s, long argc, t_atom *argv)
 ////
 // START AND STOP MSGS
 ////
-void luagran_start(t_luagran *x){
+void luagran_tilde_start(t_luagran_tilde *x){
 	x->running = true;
 }
 
-void luagran_stop(t_luagran *x){
+void luagran_tilde_stop(t_luagran_tilde *x){
 	x->running = false;
 }
 
 
-void luagran_new_grain(t_luagran *x, Grain *grain){
+void luagran_tilde_new_grain(t_luagran_tilde *x, Grain *grain){
 	lua_pushcfunction(x->L, error_handler);
 	lua_getglobal(x->L, "granmodule");
 	lua_getfield(x->L, -1, "generate");
@@ -340,9 +345,9 @@ void luagran_new_grain(t_luagran *x, Grain *grain){
 
 
 // rewrite
-t_int *luagran_perform(t_int *w)
+t_int *luagran_tilde_perform(t_int *w)
 {
-	t_luagran *x = (t_luagran *)(w[1]);
+	t_luagran_tilde *x = (t_luagran_tilde *)(w[1]);
 	t_sample    *l_out =      (t_sample *)(w[2]);
 	t_sample    *r_out =      (t_sample *)(w[3]);
 	int            n =             (int)(w[4]);
@@ -378,7 +383,7 @@ t_int *luagran_perform(t_int *w)
 
 			if ((x->newGrainCounter <= 0) && !currGrain->isplaying)
 			{
-				luagran_new_grain(x, currGrain);
+				luagran_tilde_new_grain(x, currGrain);
 			}
 		}
 		l_out++;
@@ -403,8 +408,8 @@ zero:
 }
 
 // adjust for the appropriate number of inlets and outlets (2 out, no in)
-void luagran_dsp(t_luagran *x, t_signal **sp)
+void luagran_tilde_dsp(t_luagran_tilde *x, t_signal **sp)
 {
-	dsp_add(luagran_perform, 4, x,
+	dsp_add(luagran_tilde_perform, 4, x,
           sp[0]->s_vec, sp[1]->s_vec, sp[0]->s_n);
 }
