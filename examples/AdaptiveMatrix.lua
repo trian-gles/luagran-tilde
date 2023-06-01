@@ -1,4 +1,4 @@
-local N= 3
+local N= 4
 nondiags = (N*N - N) / 2
 require 'math'
 
@@ -219,7 +219,7 @@ function get_combinations(choices, length)
     end
     
     for _, comb in ipairs(get_combinations(sub_choices, length-1)) do
-      table.insert(combs, {choices[i], table.unpack(comb)})
+      table.insert(combs, {choices[i], unpack(comb)})
     end
   end
   
@@ -284,6 +284,10 @@ function adjust_positive_definite(m, i, j)
     	if tostring(root_1) == tostring(0/0) or  tostring(root_1) == tostring(-0/0)then
       		return false -- no real roots, no solution.  Try another index in the matrix!
     	end
+
+		if (root_2 == nil) then
+			return false
+		end
     
     -- print(string.format("Proposing roots %f and %f", root_1, root_2))
     	determinant_concavity = det.a / math.abs(det.a)
@@ -455,5 +459,6 @@ end
 function loadbang()
 	am = AdaptiveNMatrix:new(N)
 	print("Calling lua loadbang")
+	print(N)
 	output_vals()
 end

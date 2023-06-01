@@ -7,10 +7,10 @@ var varx = 1;
 var vary = 1;
 var cov = 0;
 
-var RESOLUTION = 21;
+var RESOLUTION = 41;
 
 
-var outMat = new JitterMatrix(1, "float32", 21, 21);
+var outMat = new JitterMatrix(1, "float32", 41, 41);
 
 function loadbang(){
 	
@@ -49,7 +49,7 @@ function bang(){
 	var normalizer = Math.sqrt(determinant) * 2 * Math.PI;
 	
 	
-	var range = (RESOLUTION / 2)
+	var range = (RESOLUTION / 4)
 	for (var i = 0; i <= RESOLUTION; i++){
 		for (var j = 0; j <= RESOLUTION; j++){
 			var xindex = ((i - range) / range) - mux;
