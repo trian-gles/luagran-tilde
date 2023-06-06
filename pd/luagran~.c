@@ -196,7 +196,6 @@ void *luagran_tilde_new(t_symbol *s)
 	luagran_tilde_usesine(x);
 	luagran_tilde_usehanning(x);
 
-
 	return ((void *)x);
 }
 
@@ -309,20 +308,22 @@ void luagran_tilde_stop(t_luagran_tilde *x){
 
 
 void luagran_tilde_new_grain(t_luagran_tilde *x, Grain *grain){
-	lua_pushcfunction(x->L, error_handler);
+
+	
+	//lua_pushcfunction(x->L, error_handler);
 	lua_getglobal(x->L, "granmodule");
 	lua_getfield(x->L, -1, "generate");
-    int status = lua_pcall(x->L, 0, 0, -3);
-	if (status != LUA_OK){
-		pd_error(x, lua_tostring(x->L, -1));
-	}
 	
+    lua_call(x->L, 0, 5);
+
+	
+
 	double rate = lua_tonumber(x->L, -5);
     double dur = lua_tonumber(x->L, -4);
 	double freq = lua_tonumber(x->L, -3);
 	double amp = lua_tonumber(x->L, -2);
 	double pan = lua_tonumber(x->L, -1);
-	lua_pop(x->L, 5);
+	lua_settop(x->L, 0);
 	
 	float sr = sys_getsr();
 	
@@ -364,6 +365,7 @@ t_int *luagran_tilde_perform(t_int *w)
 	while (n--){
 		for (size_t j = 0; j < MAXGRAINS; j++){
 			Grain* currGrain = &x->grains[j];
+			
 			if (currGrain->isplaying)
 			{
 				if (++(*currGrain).currTime > currGrain->dur)
@@ -375,6 +377,7 @@ t_int *luagran_tilde_perform(t_int *w)
 					// should include an interpolation option at some point
 					float grainAmp = currGrain->amp * oscili(1, currGrain->ampSampInc, e, x->w_envlen, &((*currGrain).ampPhase));
 					float grainOut = oscili(grainAmp ,currGrain->waveSampInc, b, x->w_len, &((*currGrain).wavePhase));
+					
 					*l_out += (grainOut * (double)currGrain->panL);
 					*r_out += (grainOut * (double)currGrain->panR);
 				}

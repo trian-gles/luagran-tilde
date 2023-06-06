@@ -20,8 +20,8 @@ function granmodule.init()
 end
 
 function granmodule.generate()
-    post("new grain");
     -- create parameters for a grain and modify state if needed
+    post("new grain")
     rate = granmodule.state.rate
     dur = 100
     freq = octfreq(randrange(7, 14))
