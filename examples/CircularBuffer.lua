@@ -19,7 +19,7 @@ end
 function CircularBuffer:get(index)
 	index = self.head + index
 	while index < 1 do
-		index = index + 4
+		index = index + #self.buf
 	end
 	return self.buf[index]
 end
