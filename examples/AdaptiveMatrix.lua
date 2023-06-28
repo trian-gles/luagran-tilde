@@ -3,8 +3,8 @@ nondiags = (N*N - N) / 2
 require 'math'
 
 this.inlets = N + nondiags
-this.outlets = N + nondiags
-
+this.outlets = N + nondiags + 1
+print(this.outlets)
 Quadratic = {a=0,b=0,c=0}
 
 function Quadratic:new(a, b, c)
@@ -411,6 +411,7 @@ function AdaptiveNMatrix:modify(value, i, j)
   end
 end
 
+
 am = nil
 
 function off_diag_scalar_index(s, n)
@@ -430,6 +431,12 @@ end
 
 function float(f)
 	i, j = get_inlet_index(this.last_inlet)
+	if (i ~= j) then 
+		std_i = math.sqrt(am.m[i][i])
+		std_j = math.sqrt(am.m[j][j])
+		f = f * (std_i * std_j)
+	end
+	
 	am:modify(f, i, j)
 	output_vals()
 end
@@ -447,13 +454,19 @@ function output_vals()
 	for i=1,N do
 		outlet(i-1, am.m[i][i])
 	end
-	
+	local corr = {}
 	-- output off diagonals
 	for nd=1,nondiags do
 		i, j = off_diag_scalar_index(nd, N)
+		std_i = math.sqrt(am.m[i][i])
+		std_j = math.sqrt(am.m[j][j])
 		outlet_i = N - 1 + nd
+		
+		corr[nd] = am.m[i][j] / (std_i * std_j)
 		outlet(outlet_i, am.m[i][j])
 	end
+	
+	outlet(N + nondiags, corr)
 end
 
 function loadbang()
