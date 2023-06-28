@@ -6,17 +6,26 @@ granmodule.state = {}
 
 local function box_muller(mu, sigma2) -- should be replaced with ziggurat at some point
 	local theta = 2 * math.pi * math.random()
-	local sqrt = math.sqrt(-2 * math.log(math.random()))
-	return sqrt * math.cos(theta), sqrt * math.sin(theta)
+	local root = math.sqrt(-2 * math.log(math.random()))
+	return root * math.cos(theta) * sigma2, root * math.sin(theta) * sigma2
 end
 
 function granmodule.init()
-	granmodule.state.ar = {0, 0}
 	
-	granmodule.state.mean = 9
-	granmodule.state.spread = 1
+	local phi2 = 0
+
+	local phi1 = 0
+	granmodule.state.ar = {phi1, phi2}
+	local sig2 = (1 - phi2) / ((1 + phi2) * (1 - phi1 - phi2) * (1 + phi1 - phi2))
+	
+	granmodule.state.mean = 11
+	granmodule.state.spread = 0.7
 	granmodule.state.sigma2 = 1
 	granmodule.state.normalize = 1
+	
+	granmodule.state.normalize = sig2^0.5
+	
+	granmodule.state.dur = 2
 	
     -- setup initial values for the state at the start
 	granmodule.state.y = CircularBuffer:new(#granmodule.state.ar)
@@ -31,22 +40,28 @@ function granmodule.generate()
 		auto_reg = auto_reg + v * granmodule.state.y:get(relative_index)
 	end
 	
+	
+	
 	-- compute error and store
 	local err = box_muller(0, granmodule.state.sigma2)
 	
 	-- compute y and store
 	local y = err + auto_reg
+	
+	granmodule.state.neg1 = y
+	
 	granmodule.state.y:push(y)
 	
 	local y_scaled = y * granmodule.state.spread / granmodule.state.normalize + granmodule.state.mean
-	
+	--post(octfreq(y_scaled))
 	
     -- create parameters for a grain and modify state if needed
-    rate = 0.02
-    dur = math.random() + 1
-    freq = octfreq(y_scaled)
+    rate = math.random() * 0.02 + 0.02
+    dur = granmodule.state.dur
+    freq = math.min(math.max(octfreq(y_scaled), 20), 20000)
+	--post(freq)
     amp = 1
-    pan = 0.5
+    pan = math.random()
     return rate, dur, freq, amp, pan
 end
 
@@ -55,15 +70,18 @@ function octfreq(linocts)
 end
 
 function granmodule.update(...)
-    local noise, period = ...
-	
-	noise = 1.2 ^ (-(noise))
+    local noise, period, sigma2, mean, dur = ...
+	granmodule.state.sigma2 = sigma2
+	noise = 1.01 ^ (-noise)
 	local phi2 = - (noise^2)
 	local phi1 = 2 * noise * math.cos((1 / period) * 2 * 3.1415926)
 	local sig2 = (1 - phi2) / ((1 + phi2) * (1 - phi1 - phi2) * (1 + phi1 - phi2))
-	
+	granmodule.state.mean = mean
+	granmodule.state.dur = dur
 	granmodule.state.ar[1] = phi1
 	granmodule.state.ar[2] = phi2
+	--post(tostring(phi1))
+	--post(tostring(phi2))
 	
 	granmodule.state.normalize = sig2^0.5
 end
