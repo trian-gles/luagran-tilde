@@ -40,6 +40,12 @@ function setR(newR)
 	sig = math.sqrt(sig2)
 end
 
+function setSig2_0(newsig)
+	sig2_0 = newsig
+	sig2 = sig2_0 * (1 - phi2) / ((1 + phi2) * (1 - phi1 - phi2) * (1 + phi1 - phi2))
+	sig = math.sqrt(sig2)
+end
+
 function setPeriod(newP)
 	period = newP
 	omega = 2 * math.pi * (1 / period)
@@ -54,9 +60,9 @@ function float(v)
 	if (this.last_inlet == 1) then
 		setR(math.pow(1.01, -v))
 	elseif (this.last_inlet == 2) then
-		setPeriod(v)
+		setSig2_0(v)
 	else
-	
+		setPeriod(v)
 	end
 end
 
@@ -86,7 +92,7 @@ function apply()
 		ylast = mod
 		
 		
-		mat1:setcell(curr_i, curr_j, "val", x, y)
+		mat1:setcell(curr_i, curr_j, "val", x/2, y/2)
 		curr_i = curr_i + 1
 	
 		if (curr_i == 250) then

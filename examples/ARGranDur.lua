@@ -26,7 +26,6 @@ function granmodule.init()
 	granmodule.state.normalize = sig2^0.5
 	
 	granmodule.state.dur = 2
-	granmodule.state.rateBase = 0.2
 	
     -- setup initial values for the state at the start
 	granmodule.state.y = CircularBuffer:new(#granmodule.state.ar)
@@ -57,10 +56,14 @@ function granmodule.generate()
 	--post(octfreq(y_scaled))
 	
     -- create parameters for a grain and modify state if needed
-    rate = math.random() * granmodule.state.rateBase + granmodule.state.rateBase
-    dur = granmodule.state.dur
+    rate = math.random() * 0.02 + 0.58
+    --dur = granmodule.state.dur
+	dur = math.min(math.max(2^(y_scaled * 3 - 30), 0.1), 70)
 
-	freq = math.min(math.max(octfreq(y_scaled), 20), 20000)
+	local randfreq = math.random() * 5 + 7
+	freq = math.min(math.max(octfreq(randfreq), 20), 20000)
+    --freq = math.min(math.max(octfreq(y_scaled), 20), 20000)
+	--post(freq)
     amp = 1
     pan = math.random()
     return rate, dur, freq, amp, pan
@@ -71,7 +74,7 @@ function octfreq(linocts)
 end
 
 function granmodule.update(...)
-    local noise, period, sigma2, mean, dur, rate = ...
+    local noise, period, sigma2, mean, dur = ...
 	granmodule.state.sigma2 = sigma2
 	noise = 1.01 ^ (-noise)
 	local phi2 = - (noise^2)
@@ -81,7 +84,6 @@ function granmodule.update(...)
 	granmodule.state.dur = dur
 	granmodule.state.ar[1] = phi1
 	granmodule.state.ar[2] = phi2
-	granmodule.state.rateBase = rate
 	--post(tostring(phi1))
 	--post(tostring(phi2))
 	

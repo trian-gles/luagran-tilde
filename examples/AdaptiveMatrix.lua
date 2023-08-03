@@ -3,8 +3,8 @@ nondiags = (N*N - N) / 2
 require 'math'
 
 this.inlets = N + nondiags
-this.outlets = N + nondiags + 1
-print(this.outlets)
+this.outlets = N + nondiags + 2
+print(this.outlets) -- yy
 Quadratic = {a=0,b=0,c=0}
 
 function Quadratic:new(a, b, c)
@@ -414,6 +414,25 @@ end
 
 am = nil
 
+function make_matrix(l)
+	local m = {}
+	
+	
+	for i=1,N do
+		m[i] = {}
+		m[i][i] = l[i]
+
+	end
+	
+	for nd=1,nondiags do
+		local i, j = off_diag_scalar_index(nd, N)
+		m[i][j] = l[N + nd]
+		m[j][i] = l[N + nd]
+
+	end
+	return m
+end
+
 function off_diag_scalar_index(s, n)
 	local row = 0
 	local max_in_row = 0
@@ -428,6 +447,17 @@ function off_diag_scalar_index(s, n)
 	return row, col
 end
 
+function list(...)
+	local l = {...}
+	
+	local m = make_matrix(l)
+	
+	if check_positive_definite(m) then
+		am.m = m
+	end
+	
+	output_vals()
+end
 
 function float(f)
 	i, j = get_inlet_index(this.last_inlet)
@@ -467,6 +497,8 @@ function output_vals()
 	end
 	
 	outlet(N + nondiags, corr)
+	
+	outlet(N + nondiags + 1, 1)
 end
 
 function loadbang()

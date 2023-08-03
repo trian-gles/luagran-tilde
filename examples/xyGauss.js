@@ -34,13 +34,6 @@ function msg_float(f){
 		cov = -f;
 		break;
 	}
-	
-	
-	
-	outlet(2, varx);
-	outlet(3, vary);
-	outlet(4, cov);
-	bang();
 }
 
 function bang(){
