@@ -73,7 +73,7 @@ end
 function granmodule.update(...)
     local noise, period, sigma2, mean, dur, rate = ...
 	granmodule.state.sigma2 = sigma2
-	noise = 1.01 ^ (-noise)
+	noise = 1.002 ^ (-noise)
 	local phi2 = - (noise^2)
 	local phi1 = 2 * noise * math.cos((1 / period) * 2 * 3.1415926)
 	local sig2 = (1 - phi2) / ((1 + phi2) * (1 - phi1 - phi2) * (1 + phi1 - phi2))

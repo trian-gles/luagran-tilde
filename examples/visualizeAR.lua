@@ -58,7 +58,7 @@ setPeriod(250)
 
 function float(v)
 	if (this.last_inlet == 1) then
-		setR(math.pow(1.01, -v))
+		setR(math.pow(1.002, -v))
 	elseif (this.last_inlet == 2) then
 		setSig2_0(v)
 	else

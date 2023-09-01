@@ -10,7 +10,7 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 34.0, 76.0, 1147.0, 763.0 ],
+		"rect" : [ 34.0, 79.0, 1782.0, 971.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -56,7 +56,7 @@
 					"floatoutput" : 1,
 					"id" : "obj-24",
 					"maxclass" : "slider",
-					"min" : 0.2,
+					"min" : 0.1,
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
@@ -163,7 +163,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "jit_matrix", "" ],
-					"patching_rect" : [ 210.0, 465.0, 415.0, 269.0 ],
+					"patching_rect" : [ 740.0, 323.0, 915.0, 525.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 434.5, 294.0, 543.0, 428.0 ],
 					"sync" : 1
@@ -198,7 +198,7 @@
 				"box" : 				{
 					"id" : "obj-31",
 					"maxclass" : "newobj",
-					"numinlets" : 3,
+					"numinlets" : 5,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
 					"patching_rect" : [ 915.0, 521.0, 201.0, 22.0 ],
@@ -323,20 +323,20 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"parameter_enable" : 1,
-					"patching_rect" : [ 417.0, 267.0, 20.0, 140.0 ],
+					"patching_rect" : [ 451.0, 264.0, 20.0, 140.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 419.0, 108.237789511680603, 20.0, 140.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "slider",
-							"parameter_mmax" : 100.0,
+							"parameter_mmax" : 200.0,
 							"parameter_shortname" : "slider",
 							"parameter_type" : 0
 						}
 
 					}
 ,
-					"size" : 100.0,
+					"size" : 200.0,
 					"varname" : "slider"
 				}
 
@@ -420,7 +420,7 @@
 									"numinlets" : 6,
 									"numoutlets" : 1,
 									"outlettype" : [ "" ],
-									"patching_rect" : [ 688.5, 293.0, 113.0, 36.0 ],
+									"patching_rect" : [ 688.5, 293.0, 113.0, 35.0 ],
 									"text" : "scale 0 128 2 2000 0.2"
 								}
 
@@ -432,7 +432,7 @@
 									"maxclass" : "comment",
 									"numinlets" : 1,
 									"numoutlets" : 0,
-									"patching_rect" : [ 259.0, 487.0, 150.0, 34.0 ],
+									"patching_rect" : [ 259.0, 487.0, 150.0, 33.0 ],
 									"text" : "see jit.sprinkle, could be pretty"
 								}
 
@@ -517,7 +517,7 @@
 									"numinlets" : 9,
 									"numoutlets" : 2,
 									"outlettype" : [ "jit_matrix", "" ],
-									"patching_rect" : [ 305.0, 167.0, 218.0, 36.0 ],
+									"patching_rect" : [ 305.0, 167.0, 218.0, 35.0 ],
 									"text" : "jit.gl.mesh tut_02 @draw_mode points @point_size 2 @color 1 1 1 1"
 								}
 
@@ -1549,12 +1549,12 @@
 		}
 ,
 		"dependency_cache" : [ 			{
-				"name" : "luagran~.mxe64",
-				"type" : "mx64"
+				"name" : "luagran~.mxo",
+				"type" : "iLaX"
 			}
 , 			{
 				"name" : "visualizeAR.lua",
-				"bootpath" : "~/OneDrive/Documents/Max 8/Library/luagran-tilde/examples",
+				"bootpath" : "~/Documents/Max 8/Library/max-sdk/source/luagran-tilde/examples",
 				"patcherrelativepath" : ".",
 				"type" : "Jlua",
 				"implicit" : 1
