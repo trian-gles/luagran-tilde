@@ -18,6 +18,7 @@
 #define MAXGRAINS 1000
 #define MIDC_OFFSET (261.62556530059868 / 256.0)
 #define DEFAULT_TABLE_SIZE 1024
+#define MAXCHANS 16
 
 
 
@@ -33,8 +34,7 @@ typedef struct Grain {
 	float modSiDepth; // si for modulation depth
 
 	int dur; 
-	float panR; 
-	float panL;
+	float pan[MAXCHANS];
 	bool useAmp;
 	int currTime; 
 	bool isplaying;
@@ -64,6 +64,8 @@ typedef struct _luagran {
 	long w_envlen;
 
 	long FM; // 0 or 1 bool
+
+	long chans;
 	
 	float w_len_sr; // wavetable length over sr
 	float env_len_sr;
@@ -189,6 +191,11 @@ void ext_main(void *r)
 	CLASS_ATTR_LONG(c, "FM", 0, t_luagran, FM);
 	CLASS_ATTR_FILTER_CLIP(c, "FM", 0, 1);
 
+	CLASS_ATTR_LONG(c, "chans", 0, t_luagran, chans);
+	CLASS_ATTR_DEFAULT(c, "chans", 0, 2);
+	CLASS_ATTR_FILTER_CLIP(c, "chans", 1, 16);
+	
+
 	class_dspinit(c);
 	class_register(CLASS_BOX, c);
 	s_luagran_class = c;
@@ -243,10 +250,12 @@ void *luagran_new(t_symbol *s,  long argc, t_atom *argv)
 	}
 
 	
-	
+	attr_args_process(x, argc, argv);
+
 	//outlets
-	outlet_new((t_object *)x, "signal");		// audio outlet l
-	outlet_new((t_object *)x, "signal");		// audio outlet r
+	for (long i = 0; i<x->chans; i++){
+		outlet_new((t_object *)x, "signal");		// audio outlet l
+	}
 	
 	
 	// Setup Grains
@@ -258,10 +267,11 @@ void *luagran_new(t_symbol *s,  long argc, t_atom *argv)
         	.dur=0, 
 			.modPhase=0,
 			.modSampInc=0,
-        	.panR=0, 
-        	.panL=0, 
         	.currTime=0, 
         	.isplaying=false };
+
+		for (size_t j=0; i<x->chans;j++)
+			x->grains[i].pan[j] = 0;
     }
 
 	x->script_name = atom_getsymarg(0,argc,argv);
@@ -271,7 +281,7 @@ void *luagran_new(t_symbol *s,  long argc, t_atom *argv)
 	luagran_compile(x);
 
 
-	attr_args_process(x, argc, argv);
+	
 	
 	return (x);
 }
@@ -570,8 +580,13 @@ void luagran_new_grain(t_luagran *x, Grain *grain){
 	grain->isplaying = true;
 	grain->wavePhase = 0;
 	grain->ampPhase = 0;
-	grain->panR = pan * amp;
-	grain->panL = (1 - pan) * amp; // separating these in RAM means fewer sample rate calculations
+	if (x->chans==1)
+		grain->pan[0] = 1;
+	else if (x->chans==2){
+		grain->pan[0] = pan * amp;
+		grain->pan[1] = (1 - pan) * amp; // separating these in RAM means fewer sample rate calculations
+	}
+	
 	grain->dur = (int)round(grainDurSamps);
 	grain->useAmp = amp != 1;
 
@@ -642,8 +657,10 @@ void luagran_perform64(t_luagran *x, t_object *dsp64, double **ins, long numins,
 					else{
 						grainOut = oscili(grainAmp ,currGrain->waveSampInc, b, x->w_len, &((*currGrain).wavePhase));
 					}
-					*l_out += (grainOut * (double)currGrain->panL);
-					*r_out += (grainOut * (double)currGrain->panR);
+					
+					for (size_t k = 0; k<x->chans; k++){
+						*(outs[k]) += grainOut * (double)currGrain->pan[k];
+					}
 				}
 			}
 			// this is not an else statement so a grain can be potentially stopped and restarted on the same frame
