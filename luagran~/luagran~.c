@@ -584,7 +584,7 @@ void luagran_new_grain(t_luagran* x, Grain* grain) {
 	else if (x->chans > 2) {
 		for (int i = 1; i <= x->chans; i++) {
 			lua_rawgeti(x->L, -1, i);
-			grain->pan[i - 1] = lua_tonumber(x->L, -1);
+			grain->pan[i - 1] = amp * lua_tonumber(x->L, -1);
 			lua_pop(x->L, 1);
 		}
 	}
@@ -628,7 +628,6 @@ void luagran_new_grain(t_luagran* x, Grain* grain) {
 		grain->modSampInc = x->w_len_sr * modFreq;
 		grain->modSiDepth = x->w_len_sr * modDepth;
 	}
-
 }
 
 
