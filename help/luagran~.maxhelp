@@ -70,7 +70,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 503.0, 407.0, 50.0, 35.0 ],
+					"patching_rect" : [ 503.0, 407.0, 50.0, 36.0 ],
 					"text" : "update 1 8"
 				}
 
@@ -244,8 +244,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "signal", "signal" ],
-					"patching_rect" : [ 73.5, 116.0, 187.0, 22.0 ],
-					"text" : "luagran~ template_fm.lua @FM 1"
+					"patching_rect" : [ 73.5, 116.0, 124.0, 22.0 ],
+					"text" : "luagran~ template.lua"
 				}
 
 			}
@@ -391,8 +391,8 @@
 		}
 ,
 		"dependency_cache" : [ 			{
-				"name" : "luagran~.mxo",
-				"type" : "iLaX"
+				"name" : "luagran~.mxe64",
+				"type" : "mx64"
 			}
  ],
 		"autosave" : 0

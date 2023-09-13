@@ -1,10 +1,9 @@
 -- basic template for usage
 
-
+local npan = require('npan')
 
 local granmodule = {}
 granmodule.state = {}
-local mymod = require("mymod")
 
 function randrange(m, n)
     return math.random() * (n - m) + m
@@ -14,20 +13,27 @@ function octfreq(linocts)
     return 2^linocts
 end
 
+
+
 function granmodule.init()
     granmodule.state.rate = 10
-    mymod.myfunc();
-    -- setup initial values for the state at the start
+	
+	
+	granmodule.state.distance = 1
+	granmodule.state.anglemin = 0
+	granmodule.state.anglemax = 360
+	
+	npan.setspeakers()
 end
 
 function granmodule.generate()
-	post("calling generate")
     -- create parameters for a grain and modify state if needed
-    rate = granmodule.state.rate
+    rate = 10
     dur = 100
     freq = octfreq(randrange(7, 14))
     amp = 1
-    pan = 0.5
+	angle = random.randrange(granmodule.state.anglemin, granmodule.state.anglemax)
+    pan = npan.getamplitudes(granmodule.state.distance, granmodule.state.angle)
 
     return rate, dur, freq, amp, pan
 end
