@@ -10,7 +10,7 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 394.0, 103.0, 934.0, 699.0 ],
+		"rect" : [ 295.0, 127.0, 934.0, 699.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -40,6 +40,16 @@
 		"assistshowspatchername" : 0,
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-12",
+					"maxclass" : "scope~",
+					"numinlets" : 2,
+					"numoutlets" : 0,
+					"patching_rect" : [ 399.0, 232.0, 434.0, 180.0 ]
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-18",
 					"maxclass" : "message",
 					"numinlets" : 2,
@@ -57,7 +67,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "signal" ],
-					"patching_rect" : [ 237.0, 150.0, 47.0, 22.0 ],
+					"patching_rect" : [ 224.0, 427.0, 47.0, 22.0 ],
 					"text" : "*~ 0.01"
 				}
 
@@ -69,7 +79,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "signal" ],
-					"patching_rect" : [ 153.0, 150.0, 47.0, 22.0 ],
+					"patching_rect" : [ 99.0, 398.0, 47.0, 22.0 ],
 					"text" : "*~ 0.01"
 				}
 
@@ -80,7 +90,7 @@
 					"maxclass" : "newobj",
 					"numinlets" : 2,
 					"numoutlets" : 0,
-					"patching_rect" : [ 197.0, 406.0, 35.0, 22.0 ],
+					"patching_rect" : [ 184.0, 585.0, 35.0, 22.0 ],
 					"text" : "dac~"
 				}
 
@@ -118,7 +128,7 @@
 					"numoutlets" : 5,
 					"outlettype" : [ "signal", "signal", "", "float", "list" ],
 					"parameter_enable" : 1,
-					"patching_rect" : [ 197.0, 219.0, 48.0, 136.0 ],
+					"patching_rect" : [ 151.0, 436.0, 48.0, 136.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "live.gain~",
@@ -140,10 +150,10 @@
 					"id" : "obj-1",
 					"maxclass" : "newobj",
 					"numinlets" : 1,
-					"numoutlets" : 2,
-					"outlettype" : [ "signal", "signal" ],
-					"patching_rect" : [ 73.5, 116.0, 124.0, 22.0 ],
-					"text" : "luagran~ template.lua"
+					"numoutlets" : 3,
+					"outlettype" : [ "signal", "signal", "signal" ],
+					"patching_rect" : [ 73.5, 116.0, 303.0, 22.0 ],
+					"text" : "luagran~ template_fm_multichan.lua @FM 1 @chans 3"
 				}
 
 			}
@@ -206,7 +216,16 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-12", 0 ],
+					"order" : 0,
+					"source" : [ "obj-7", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-2", 1 ],
+					"order" : 1,
 					"source" : [ "obj-7", 0 ]
 				}
 

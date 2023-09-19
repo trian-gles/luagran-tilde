@@ -4,7 +4,6 @@
 
 local granmodule = {}
 granmodule.state = {}
-local mymod = require("mymod")
 
 function randrange(m, n)
     return math.random() * (n - m) + m
@@ -15,25 +14,21 @@ function octfreq(linocts)
 end
 
 function granmodule.init()
-    granmodule.state.rate = 10
-    mymod.myfunc();
-    -- setup initial values for the state at the start
+
 end
 
 function granmodule.generate()
     -- create parameters for a grain and modify state if needed
-    rate = granmodule.state.rate
+    rate = 10
     dur = 100
     freq = octfreq(randrange(7, 14))
     amp = 1
-    pan = 0.5
+    pan = {0.1, 0.5, 1.}
 
     return rate, dur, freq, amp, pan
 end
 
 function granmodule.update(...)
-    -- receives updates from lists sent to the object as args
-    granmodule.state.rate = ...
 end
 
 return granmodule

@@ -556,7 +556,6 @@ void luagran_new_grain(t_luagran* x, Grain* grain) {
 	
 	
 	if (!x->FM) {
-		post("Extracting lua args");
 		rate = lua_tonumber(x->L, -4 + pan_offset);
 		dur = lua_tonumber(x->L, -3 + pan_offset);
 		freq = lua_tonumber(x->L, -2 + pan_offset);
@@ -575,11 +574,9 @@ void luagran_new_grain(t_luagran* x, Grain* grain) {
 	if (x->chans == 1)
 		grain->pan[0] = amp;
 	else if (x->chans == 2) {
-		post("Handling 2 chan panning, rate is %d dur is %d freq is %d amp is %d", rate, dur, freq, amp);
 		pan = lua_tonumber(x->L, -1);
 		grain->pan[0] = pan * amp;
 		grain->pan[1] = (1 - pan) * amp;
-		post("Pan : %d", pan);
 	}
 	else if (x->chans > 2) {
 		for (int i = 1; i <= x->chans; i++) {
@@ -639,6 +636,13 @@ void luagran_perform64(t_luagran* x, t_object* dsp64, double** ins, long numins,
 	float* b;
 	float* e;
 
+	t_double* outptrs[MAXCHANS];
+	for (size_t k = 0; k < x->chans; k++) {
+			outptrs[k] = outs[k];
+	}
+
+
+
 	t_buffer_obj* buffer = buffer_ref_getobject(x->w_buf);
 	t_buffer_obj* env = buffer_ref_getobject(x->w_env);
 
@@ -659,6 +663,11 @@ void luagran_perform64(t_luagran* x, t_object* dsp64, double** ins, long numins,
 	}
 
 	while (n--) {
+
+		for (size_t k = 0; k < x->chans; k++) {
+			*outptrs[k] = 0.;
+		}
+
 		for (size_t j = 0; j < MAXGRAINS; j++) {
 			Grain* currGrain = &x->grains[j];
 			if (currGrain->isplaying)
@@ -676,17 +685,13 @@ void luagran_perform64(t_luagran* x, t_object* dsp64, double** ins, long numins,
 					if (x->FM) {
 						float trueSi = currGrain->waveSampInc + oscili(currGrain->modSiDepth, currGrain->modSampInc, b, x->w_len, &((*currGrain).modPhase));
 						grainOut = oscili(grainAmp, trueSi, b, x->w_len, &((*currGrain).wavePhase));
-						if (grainOut > 1) {
-							post("Exploding grain out");
-							grainOut = 0;
-						}
 					}
 					else {
 						grainOut = oscili(grainAmp, currGrain->waveSampInc, b, x->w_len, &((*currGrain).wavePhase));
 					}
 
 					for (size_t k = 0; k < x->chans; k++) {
-						*(outs[k]) += grainOut * (double)currGrain->pan[k];
+						*outptrs[k] += (double)grainOut * (double)currGrain->pan[k];
 					}
 				}
 			}
@@ -696,9 +701,13 @@ void luagran_perform64(t_luagran* x, t_object* dsp64, double** ins, long numins,
 				luagran_new_grain(x, currGrain);
 
 		}
+
+
 		for (long k = 0; k < x->chans; k++) {
-			(outs[k])++;
+			outptrs[k]++;
 		}
+		
+
 		x->newGrainCounter--;
 	}
 
@@ -710,22 +719,21 @@ void luagran_perform64(t_luagran* x, t_object* dsp64, double** ins, long numins,
 
 
 
-
 	if (x->extern_wave)
 		buffer_unlocksamples(buffer);
 	if (x->extern_env)
 		buffer_unlocksamples(env);
 	return;
 zero:
-	while (n--) {
 
-		for (size_t k = 0; k < x->chans; k++) {
-			*(outs[k]) = 0;
-		}
+	for (size_t k = 0; k < x->chans; k++) {
+		double* chan = outs[k];
+		int m = n;
+		while (m--)
+			*chan++ = 0.;
 	}
 }
 
-// adjust for the appropriate number of inlets and outlets (2 out, no in)
 void luagran_dsp64(t_luagran* x, t_object* dsp64, short* count, double samplerate, long maxvectorsize, long flags)
 {
 	object_method(dsp64, gensym("dsp_add64"), x, luagran_perform64, 0, NULL);
