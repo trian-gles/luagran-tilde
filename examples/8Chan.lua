@@ -23,7 +23,15 @@ function granmodule.init()
 	granmodule.state.anglemin = 0
 	granmodule.state.anglemax = 360
 	
-	npan.setspeakers()
+	npan.setspeakers({45, 1,   -- front left
+      -45, 1,   -- front right
+       90, 1,   -- side left
+      -90, 1,   -- side right
+      135, 1,   -- rear left
+     -135, 1,   -- rear right rear
+        0, 1,   -- front center
+      180, 1 	-- rear center
+	  })
 end
 
 function granmodule.generate()
@@ -33,7 +41,7 @@ function granmodule.generate()
     freq = octfreq(randrange(7, 14))
     amp = 1
 	angle = random.randrange(granmodule.state.anglemin, granmodule.state.anglemax)
-    pan = npan.getamplitudes(granmodule.state.distance, granmodule.state.angle)
+    pan = npan.get_gains(granmodule.state.distance, granmodule.state.angle)
 
     return rate, dur, freq, amp, pan
 end

@@ -15,13 +15,10 @@ Speaker = {
 	distance = 0
 }
 
-function Speaker:new(chan, angle, dist) -- fix constructor
-	local o = {}
+function Speaker:new(chan, angle, dist)
+	local o = {channel=chan, angle=angle, distance=dist}
 	setmetatable(o, self)
 	self.__index = self
-	o.channel = chan
-	o.angle = math.pi * (angle / 180)
-	o.distance = dist
 	return o
 end
 
@@ -32,8 +29,9 @@ end
 function npan.set_speakers(args)
 	local num_speakers = #args/2
 	for i=1,num_speakers do
-		local angle = args[i * 2]
-		local dist = args[i * 2 + 1]
+		local angle = math.pi * (args[i * 2 - 1] + 90) / 180
+		angle = math.atan2(math.sin(angle), math.cos(angle)) -- normalize
+		local dist = args[i * 2]
 		npan.speakers[i] = Speaker:new(i, angle, dist)		
 	end
 	
@@ -60,31 +58,32 @@ function npan.get_gains(src_angle, src_distance)
 		src_distance = MINDIST
 	end
 	
-	src_angle = math.pi * src_angle / 180 
+	src_angle = math.pi * (src_angle + 90) / 180 
+	src_angle = math.atan2(math.sin(src_angle), math.cos(src_angle)) -- normalize
 	
 	local gains = {}
 	
 	for i, spk in ipairs(npan.speakers) do
+		local source_angle = src_angle
 		if (i == 1 and src_angle > 0.0) then
-			src_angle = src_angle - 2 * math.pi
-		elseif (i == #npan.speakers) then
-			src_angle = src_angle + 2 * math.pi
+			source_angle = src_angle - 2 * math.pi
+		elseif (i == #npan.speakers and src_angle < 0.0) then
+			source_angle = src_angle + 2 * math.pi
 		end
-		
-		if (src_angle > spk.prevAngle and src_angle < spk.nextAngle) then
+		if (source_angle > spk.prevAngle and source_angle < spk.nextAngle) then
 			local scale = 0
-			if (src_angle < spk.angle) then
+			if (source_angle < spk.angle) then
 				scale = (spk.angle - spk.prevAngle) * 2 / math.pi
 			else
 				scale = (spk.nextAngle - spk.angle) * 2 / math.pi
 			end
 			
-			local diff = math.abs(src_angle - spk.angle) / scale
+			local diff = math.abs(source_angle - spk.angle) / scale
 			local distfactor = spk.distance / src_distance
-			gains[i] = math.cos(diff) * distfactor
+			gains[spk.channel] = math.cos(diff) * distfactor
 			
 		else
-			gains[i] = 0
+			gains[spk.channel] = 0
 		end
 		
 		
@@ -94,15 +93,21 @@ function npan.get_gains(src_angle, src_distance)
 end
 
 function npan.test()
-	npan.set_speakers({0, 1, 90, 1, 180, 1, 270, 1})
+	npan.set_speakers({45, 1,   -- front left
+      -45, 1,   -- front right
+       90, 1,   -- side left
+      -90, 1,   -- side right
+      135, 1,   -- rear left
+     -135, 1,   -- rear right rear
+        0, 1,   -- front center
+      180, 1 	-- rear center
+	  })
 	
-	local output = "speakers : "
 	for i, v in ipairs(npan.speakers) do
-		output = output .. string.format("%f, ", v.angle)
+		print(string.format("prev: %f angle: %f next : %f, ", v.prevAngle, v.angle, v.nextAngle))
 	end
-	print(output)
 	
-	local gains = npan.get_gains(45, 1)
+	local gains = npan.get_gains(120, 1)
 	local output = "gains : "
 	for i, v in ipairs(gains) do
 		output = output .. string.format("%f, ", v)
