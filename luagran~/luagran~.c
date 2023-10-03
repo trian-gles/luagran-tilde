@@ -220,7 +220,7 @@ void* luagran_new(t_symbol* s, long argc, t_atom* argv)
 	t_symbol* env = 0;
 
 	dsp_setup((t_pxobject*)x, 0);
-	if (argc > 0) {
+	if (argc > 1) {
 		buf = atom_getsymarg(0, argc, argv);
 		x->w_name = buf;
 		x->extern_wave = true;
@@ -234,7 +234,7 @@ void* luagran_new(t_symbol* s, long argc, t_atom* argv)
 		luagran_usesine(x);
 	}
 
-	if (argc > 1) {
+	if (argc > 2) {
 		env = atom_getsymarg(1, argc, argv);
 		x->w_envname = env;
 		x->extern_env = true;

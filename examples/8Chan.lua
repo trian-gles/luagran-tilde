@@ -5,14 +5,23 @@ local npan = require('npan')
 local granmodule = {}
 granmodule.state = {}
 
-function randrange(m, n)
+local function randrange(m, n)
     return math.random() * (n - m) + m
 end
 
-function octfreq(linocts)
+local function octfreq(linocts)
     return 2^linocts
 end
 
+
+CARRIERMIN = 20
+CARRIERMAX = 20000
+
+MODFREQMIN = 0.5
+MODFREQMAX = 20000
+
+MODDEPTHMIN = 20
+MODDEPTHMAX = 20000
 
 
 function granmodule.init()
@@ -23,7 +32,7 @@ function granmodule.init()
 	granmodule.state.anglemin = 0
 	granmodule.state.anglemax = 360
 	
-	npan.setspeakers({45, 1,   -- front left
+	npan.set_speakers({45, 1,   -- front left
       -45, 1,   -- front right
        90, 1,   -- side left
       -90, 1,   -- side right
@@ -36,14 +45,16 @@ end
 
 function granmodule.generate()
     -- create parameters for a grain and modify state if needed
-    rate = 10
-    dur = 100
-    freq = octfreq(randrange(7, 14))
-    amp = 1
-	angle = random.randrange(granmodule.state.anglemin, granmodule.state.anglemax)
-    pan = npan.get_gains(granmodule.state.distance, granmodule.state.angle)
+    local rate = 10
+    local dur = 100
+    local freq = octfreq(randrange(7, 14))
+    local moddepth = octfreq(randrange(7, 11))
+    local modfreq = octfreq(randrange(2, 14))
+    local amp = 1
+	local angle = randrange(granmodule.state.anglemin, granmodule.state.anglemax)
+    local pan = npan.get_gains(angle, granmodule.state.distance)
 
-    return rate, dur, freq, amp, pan
+    return rate, dur, freq, modfreq, moddepth, amp, pan
 end
 
 function granmodule.update(...)
