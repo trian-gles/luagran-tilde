@@ -47,6 +47,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 664.5, 120.0, 150.0, 33.0 ],
 					"text" : "<- click here to switch to a saw wave"
+
 				}
 
 			}
@@ -285,6 +286,13 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-17", 0 ],
+					"source" : [ "obj-20", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-1", 0 ],
 					"source" : [ "obj-4", 0 ]
 				}
@@ -331,8 +339,8 @@
 		}
 ,
 		"dependency_cache" : [ 			{
-				"name" : "luagran~.mxo",
-				"type" : "iLaX"
+				"name" : "luagran~.mxe64",
+				"type" : "mx64"
 			}
  ],
 		"autosave" : 0,
