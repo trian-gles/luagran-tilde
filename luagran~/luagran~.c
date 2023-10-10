@@ -221,7 +221,7 @@ void* luagran_new(t_symbol* s, long argc, t_atom* argv)
 
 	dsp_setup((t_pxobject*)x, 0);
 	if (argc > 1) {
-		buf = atom_getsymarg(0, argc, argv);
+		buf = atom_getsymarg(1, argc, argv);
 		x->w_name = buf;
 		x->extern_wave = true;
 		x->w_buf = buffer_ref_new((t_object*)x, x->w_name);
@@ -235,7 +235,7 @@ void* luagran_new(t_symbol* s, long argc, t_atom* argv)
 	}
 
 	if (argc > 2) {
-		env = atom_getsymarg(1, argc, argv);
+		env = atom_getsymarg(2, argc, argv);
 		x->w_envname = env;
 		x->extern_env = true;
 		x->w_env = buffer_ref_new((t_object*)x, x->w_envname);
