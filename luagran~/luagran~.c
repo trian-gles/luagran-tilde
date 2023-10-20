@@ -48,6 +48,9 @@ typedef struct _luagran {
 	t_symbol* w_envname;
 	t_symbol* script_name;
 
+	t_atom init_args[32];
+	long init_arg_len;
+
 	lua_State* L;
 
 	t_bool running;
@@ -193,6 +196,7 @@ void ext_main(void* r)
 
 	CLASS_ATTR_LONG(c, "chans", 0, t_luagran, chans);
 	CLASS_ATTR_FILTER_CLIP(c, "chans", 1, 16);
+	CLASS_ATTR_ATOM_VARSIZE(c, "init", 0, t_luagran, init_args, init_arg_len, 32);
 
 
 	class_dspinit(c);
@@ -354,7 +358,27 @@ void luagran_doread(t_luagran* x, t_symbol* s) {
 	lua_getglobal(x->L, "granmodule");
 	lua_getfield(x->L, -1, "init");
 
-	int status = lua_pcall(x->L, 0, 0, -3);
+	int i;
+	t_atom* ap;
+
+	for (i = 0, ap = x->init_args; i < x->init_arg_len; i++, ap++) {
+		switch (atom_gettype(ap)) {
+		case A_LONG:
+			lua_pushnumber(x->L, (double)atom_getlong(ap));
+			break;
+		case A_FLOAT:
+			lua_pushnumber(x->L, (double)atom_getfloat(ap));
+			break;
+		case A_SYM:
+			lua_pushstring(x->L, atom_getsym(ap)->s_name);
+			break;
+		default:
+			post("%ld: unknown atom type (%ld)", i + 1, atom_gettype(ap));
+			break;
+		}
+	}
+
+	int status = lua_pcall(x->L, x->init_arg_len, 0, -3 - x->init_arg_len);
 	if (status != LUA_OK) {
 		error(lua_tostring(x->L, -1));
 	}
