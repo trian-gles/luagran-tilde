@@ -45,9 +45,8 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 664.5, 120.0, 150.0, 33.0 ],
+					"patching_rect" : [ 664.5, 120.0, 150.0, 34.0 ],
 					"text" : "<- click here to switch to a saw wave"
-
 				}
 
 			}
@@ -74,7 +73,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 569.5, 99.0, 93.0, 67.0 ],
+					"patching_rect" : [ 569.5, 99.0, 93.0, 68.0 ],
 					"text" : "fill 1, apply triangle half, apply gain -2, apply offset 1"
 				}
 
@@ -219,8 +218,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "signal", "signal" ],
-					"patching_rect" : [ 73.5, 116.0, 176.0, 22.0 ],
-					"text" : "luagran~ template.lua sinetable"
+					"patching_rect" : [ 73.5, 116.0, 219.0, 22.0 ],
+					"text" : "luagran~ template.lua sinetable @init hi"
 				}
 
 			}
@@ -281,13 +280,6 @@
 					"destination" : [ "obj-25", 0 ],
 					"midpoints" : [ 463.0, 167.0, 463.0, 167.0 ],
 					"source" : [ "obj-24", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-17", 0 ],
-					"source" : [ "obj-20", 0 ]
 				}
 
 			}

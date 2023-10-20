@@ -14,7 +14,9 @@ function octfreq(linocts)
     return 2^linocts
 end
 
-function granmodule.init()
+function granmodule.init(...)
+	local myval = ...
+	post(string.format("calling init with %s", myval))
     granmodule.state.rate = 10
     mymod.myfunc();
     -- setup initial values for the state at the start
