@@ -26,7 +26,7 @@ function granmodule.generate()
     rate = granmodule.state.rate
     dur = 100
     freq = octfreq(randrange(10, 11))
-    modfreq = granmodule.state.modfreq //octfreq(randrange(5, 10))
+    modfreq = granmodule.state.modfreq -- octfreq(randrange(5, 10))
     moddepth = octfreq(randrange(9, 10))
     amp = 1
     pan = 0.5

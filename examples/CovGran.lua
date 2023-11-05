@@ -7,6 +7,12 @@ require 'math'
 CARRIERMIN = 4.5
 CARRIERMAX = 15
 
+MODFREQMIN = 0.5
+MODFREQMAX = 15
+
+MODDEPTHMIN = 0
+MODDEPTHMAX = 
+
 local function box_muller(mu, sigma2) -- should be replaced with ziggurat at some point
 	local theta = 2 * math.pi * math.random()
 	local sqrt = math.sqrt(-2 * math.log(math.random()))

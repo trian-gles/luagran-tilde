@@ -533,10 +533,6 @@ void luagran_start(t_luagran* x) {
 void luagran_stop(t_luagran* x) {
 	x->running = false;
 
-	for (size_t i = 0; i < MAXGRAINS; i++) {
-		x->grains[i].isplaying = false;
-	}
-
 	x->newGrainCounter = 0;
 }
 
@@ -680,7 +676,7 @@ void luagran_perform64(t_luagran* x, t_object* dsp64, double** ins, long numins,
 	else
 		e = x->hanningTable;
 
-	if (!b || !e || !x->running)
+	if (!b || !e)
 	{
 		//post("DSP failure");
 		goto zero;
@@ -721,7 +717,7 @@ void luagran_perform64(t_luagran* x, t_object* dsp64, double** ins, long numins,
 			}
 			// this is not an else statement so a grain can be potentially stopped and restarted on the same frame
 
-			if ((x->newGrainCounter <= 0) && !currGrain->isplaying)
+			if (( x->running && x->newGrainCounter <= 0) && !currGrain->isplaying)
 				luagran_new_grain(x, currGrain);
 
 		}
@@ -736,7 +732,7 @@ void luagran_perform64(t_luagran* x, t_object* dsp64, double** ins, long numins,
 	}
 
 	// if all current grains are occupied, we skip this request for a new grain
-	if (x->newGrainCounter <= 0)
+	if (x->newGrainCounter <= 0 && x->running)
 	{
 		x->newGrainCounter = 1;
 	}
